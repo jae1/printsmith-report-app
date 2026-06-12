@@ -424,12 +424,39 @@
   }
 
   async function sendEmail() {
-    if (!confirm('Send report email?')) return;
+    const btn = document.querySelector('.btn-email');
+    const originalText = btn.innerText;
+    const originalBg = btn.style.background;
+    
+    // Set to sending state
+    btn.innerText = 'Sending...';
+    btn.style.background = '#6c757d'; // Gray
+    btn.disabled = true;
+
     try {
       const res = await fetch('/api/report/email?target_date=' + dateInput.value);
       const result = await res.json();
-      alert(result.status === 'success' ? 'Email sent!' : 'Error: ' + result.message);
-    } catch(e) { alert('Failed: ' + e.message); }
+      
+      if (result.status === 'success') {
+        btn.innerText = 'Sent! ✓';
+        btn.style.background = '#28a745'; // Green
+      } else {
+        btn.innerText = 'Failed ❌';
+        btn.style.background = '#d9534f'; // Red
+        console.error(result.message);
+      }
+    } catch(e) { 
+      btn.innerText = 'Error ❌';
+      btn.style.background = '#d9534f';
+      console.error(e);
+    } finally {
+      // Revert back after 3 seconds
+      setTimeout(() => {
+        btn.innerText = originalText;
+        btn.style.background = originalBg;
+        btn.disabled = false;
+      }, 3000);
+    }
   }
 
   function exportExcel() { window.location.href = '/api/export?target_date=' + dateInput.value; }
