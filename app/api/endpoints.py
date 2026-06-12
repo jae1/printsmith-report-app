@@ -5,9 +5,29 @@ from app.services.report_service import get_report_data
 from app.services.export_service import generate_report_xlsx
 from app.services.email_service import send_report_email
 from app.core.config import SMTP_CONFIG
-from app.services import hide_service
+from app.services import hide_service, spending_service
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api")
+
+class SpendingCreate(BaseModel):
+    vendor: str
+    description: str
+    amount: float
+
+@router.get("/spending")
+def get_spending(target_date: str):
+    return spending_service.get_spending_by_date(target_date)
+
+@router.post("/spending")
+def add_spending(target_date: str, item: SpendingCreate):
+    spending_service.add_spending(target_date, item.vendor, item.description, item.amount)
+    return {"status": "success"}
+
+@router.delete("/spending/{target_date}/{spending_id}")
+def delete_spending(target_date: str, spending_id: str):
+    spending_service.delete_spending(target_date, spending_id)
+    return {"status": "success"}
 
 @router.get("/hidden")
 def get_hidden():
