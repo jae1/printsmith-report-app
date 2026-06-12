@@ -423,12 +423,37 @@
     document.getElementById('report').innerHTML = html;
   }
 
+  let emailConfirmTimeout = null;
+  let isEmailConfirming = false;
+
   async function sendEmail() {
     const btn = document.querySelector('.btn-email');
-    const originalText = btn.innerText;
-    const originalBg = btn.style.background;
     
-    // Set to sending state
+    if (!isEmailConfirming) {
+      // Step 1: Ask for confirmation inline
+      isEmailConfirming = true;
+      btn.dataset.originalText = btn.innerText;
+      btn.dataset.originalBg = btn.style.background || '';
+      
+      btn.innerText = 'Click again to confirm';
+      btn.style.background = '#f0ad4e'; // Warning orange
+      
+      // Cancel confirmation after 3 seconds if not clicked again
+      emailConfirmTimeout = setTimeout(() => {
+        isEmailConfirming = false;
+        btn.innerText = btn.dataset.originalText;
+        btn.style.background = btn.dataset.originalBg;
+      }, 3000);
+      return;
+    }
+
+    // Step 2: Actually send
+    clearTimeout(emailConfirmTimeout);
+    isEmailConfirming = false;
+    
+    const originalText = btn.dataset.originalText;
+    const originalBg = btn.dataset.originalBg;
+
     btn.innerText = 'Sending...';
     btn.style.background = '#6c757d'; // Gray
     btn.disabled = true;
@@ -450,7 +475,6 @@
       btn.style.background = '#d9534f';
       console.error(e);
     } finally {
-      // Revert back after 3 seconds
       setTimeout(() => {
         btn.innerText = originalText;
         btn.style.background = originalBg;
