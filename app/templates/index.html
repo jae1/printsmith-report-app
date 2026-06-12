@@ -272,7 +272,6 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(currentSettings)
       });
-      alert('Settings saved!');
       closeSettings();
     } catch(e) { alert('Failed to save settings'); }
   }
