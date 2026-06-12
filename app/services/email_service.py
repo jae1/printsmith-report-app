@@ -96,7 +96,7 @@ def generate_mobile_html(data):
             <div style="text-align: center; padding-bottom: 25px; color: #555; font-size: 18px; font-weight: bold;">Overnight Daily Report • {target_date}</div>
             
             <div class="summary-card">
-                <div style="font-size: 18px; font-weight: bold; opacity: 0.95; margin-bottom: 15px; letter-spacing: 1px;">TOTAL CASH COLLECTED TODAY</div>
+                <div style="font-size: 18px; font-weight: bold; opacity: 0.95; margin-bottom: 15px; letter-spacing: 1px;">TOTAL COLLECTED TODAY</div>
                 <div style="font-size: 52px; font-weight: 900;">${cashflow:,.2f}</div>
             </div>
 
