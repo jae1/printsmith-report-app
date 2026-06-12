@@ -334,7 +334,7 @@
       const res = await fetch('/api/vendors');
       const vendors = await res.json();
       const dl = document.getElementById('vendorList');
-      dl.innerHTML = vendors.map(v => `<option value="${v}">`).join('');
+      dl.innerHTML = vendors.map(v => `<option value="${v}"></option>`).join('');
     } catch(e) { console.error('Failed to load vendors', e); }
   }
 
