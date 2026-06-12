@@ -34,6 +34,10 @@ class SpendingCreate(BaseModel):
 def get_spending(target_date: str):
     return spending_service.get_spending_by_date(target_date)
 
+@router.get("/vendors")
+def get_vendors():
+    return spending_service.get_unique_vendors()
+
 @router.post("/spending")
 def add_spending(target_date: str, item: SpendingCreate):
     spending_service.add_spending(target_date, item.vendor, item.description, item.amount)
