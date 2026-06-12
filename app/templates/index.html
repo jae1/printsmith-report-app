@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>PrintSmith Daily Report</title>
@@ -12,6 +12,26 @@
   .btn-load { background: #4472C4; color: white; }
   .btn-export { background: #70AD47; color: white; }
   .btn-email { background: #5BC0DE; color: white; }
+  .btn-refresh-fixed { 
+    position: fixed; 
+    top: 20px; 
+    right: 20px; 
+    z-index: 1000; 
+    background: #6c757d; 
+    color: white; 
+    border-radius: 50%; 
+    width: 45px; 
+    height: 45px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2); 
+    cursor: pointer;
+    font-size: 18px;
+    border: none;
+    transition: transform 0.2s;
+  }
+  .btn-refresh-fixed:hover { background: #5a6268; transform: rotate(180deg); }
   .btn-hide { background: #eee; color: #999; padding: 2px 6px; font-size: 11px; margin-left: 5px; border-radius: 3px; cursor: pointer; border: none; }
   .btn-hide:hover { background: #ddd; color: #333; }
   .section { background: white; border-radius: 8px; padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
@@ -21,8 +41,15 @@
   .ready h2 { color: #70AD47; }
   .picked_up h2 { color: #ED7D31; }
   .paid h2 { color: #B8860B; }
+  .badge-paid { background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
+  .badge-bal { background: #FFC000; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
+  .badge-type { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 5px; color: white; }
+  .bg-paid { background: #28a745; }
+  .bg-deposit { background: #007bff; }
+  .bg-ar { background: #17a2b8; }
+  .bg-mixed { background: #6f42c1; }
+  .badge-method { background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; border: 1px solid #ced4da; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: #eee; padding: 8px; text-align: left; }
   th { background: #eee; padding: 8px; text-align: left; cursor: pointer; user-select: none; }
   th:hover { background: #ddd; }
   .sort-icon { font-size: 10px; margin-left: 4px; color: #999; }
@@ -32,17 +59,18 @@
 </style>
 </head>
 <body>
+<button class="btn-refresh-fixed" onclick="loadReport(true)" title="Quick Refresh">🔄</button>
 <h1>📋 PrintSmith Daily Report</h1>
 <div class="controls">
   <input type="date" id="dateInput">
-  <button class="btn-load" onclick="loadReport()">불러오기</button>
-  <button class="btn-export" onclick="exportExcel()">엑셀 다운로드</button>
-  <button class="btn-email" onclick="sendEmail()">사장님께 이메일</button>
+  <button class="btn-load" onclick="loadReport()">Load Report</button>
+  <button class="btn-export" onclick="exportExcel()">Export Excel</button>
+  <button class="btn-email" onclick="sendEmail()">Email to Boss</button>
   <span id="updateStatus" style="font-size: 12px; color: #666; margin-left: 10px;"></span>
 </div>
 <div id="report"></div>
 <div id="hiddenSection" class="section" style="margin-top: 50px; border-top: 2px solid #eee;">
-  <h2>🙈 숨김 목록 관리</h2>
+  <h2>🙈 Managed Hidden List</h2>
   <div id="hiddenList" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
 </div>
 <script>
@@ -51,40 +79,41 @@
   let autoRefreshTimer = null;
 
   const today = new Date().toISOString().split('T')[0];
-  document.getElementById('dateInput').value = today;
+  const dateInput = document.getElementById('dateInput');
+  dateInput.value = today;
+  dateInput.max = today; // Restrict future dates
 
   async function loadReport(isAuto = false) {
     const d = document.getElementById('dateInput').value;
     if (!isAuto) {
-        document.getElementById('report').innerHTML = '<p>로딩 중...</p>';
+        document.getElementById('report').innerHTML = '<p>Loading...</p>';
     }
     
     try {
       const res = await fetch('/api/report?target_date=' + d);
       reportData = await res.json();
       renderReport();
-      loadHiddenList(); // 숨김 목록도 함께 로드
+      loadHiddenList(); 
       
       const now = new Date().toLocaleTimeString();
-      document.getElementById('updateStatus').innerText = `마지막 업데이트: ${now} (60초마다 자동 갱신)`;
+      document.getElementById('updateStatus').innerText = `Last Updated: ${now} (Auto-refresh every 60s)`;
     } catch(e) {
       if (!isAuto) {
-        document.getElementById('report').innerHTML = '<p style="color:red">에러: ' + e.message + '</p>';
+        document.getElementById('report').innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
       }
       console.error('Auto-refresh error:', e);
     }
     
-    // Reset timer
     if (autoRefreshTimer) clearInterval(autoRefreshTimer);
-    autoRefreshTimer = setInterval(() => loadReport(true), 60000); // 1 min
+    autoRefreshTimer = setInterval(() => loadReport(true), 60000);
   }
 
   async function hideInvoice(invNum) {
-    if (!confirm(`인보이스 #${invNum}을 리포트에서 영구히 숨기시겠습니까?`)) return;
+    if (!confirm(`Are you sure you want to permanently hide Invoice #${invNum} from the report?`)) return;
     try {
       await fetch(`/api/hide/${invNum}`, { method: 'POST' });
       loadReport();
-    } catch(e) { alert('실패: ' + e.message); }
+    } catch(e) { alert('Failed: ' + e.message); }
   }
 
   async function loadHiddenList() {
@@ -92,10 +121,10 @@
       const res = await fetch('/api/hidden');
       const list = await res.json();
       let html = '';
-      if (list.length === 0) html = '<p class="empty">숨긴 내역 없음</p>';
+      if (list.length === 0) html = '<p class="empty">No hidden items</p>';
       for (const inv of list) {
         html += `<span style="background:#f0f0f0; padding:4px 8px; border-radius:4px; font-size:12px; border:1px solid #ccc;">
-          #${inv} <button onclick="unhideInvoice('${inv}')" style="padding:0; background:none; border:none; color:red; cursor:pointer; font-weight:bold; margin-left:5px;">[해제]</button>
+          #${inv} <button onclick="unhideInvoice('${inv}')" style="padding:0; background:none; border:none; color:red; cursor:pointer; font-weight:bold; margin-left:5px;">[Unhide]</button>
         </span>`;
       }
       document.getElementById('hiddenList').innerHTML = html;
@@ -106,7 +135,7 @@
     try {
       await fetch(`/api/unhide/${invNum}`, { method: 'POST' });
       loadReport();
-    } catch(e) { alert('실패: ' + e.message); }
+    } catch(e) { alert('Failed: ' + e.message); }
   }
 
   function fmt(val) {
@@ -120,14 +149,13 @@
     } else {
       sortConfig.section = sectionKey;
       sortConfig.key = columnKey;
-      sortConfig.direction = 'desc'; // Default to desc when changing column
+      sortConfig.direction = 'desc'; 
     }
 
     reportData[sectionKey].sort((a, b) => {
       let v1 = a[columnKey];
       let v2 = b[columnKey];
       
-      // Handle numeric values (like invoicenumber and grandtotal)
       if (columnKey === 'invoicenumber' || columnKey === 'grandtotal') {
         v1 = parseFloat(v1 || 0);
         v2 = parseFloat(v2 || 0);
@@ -160,53 +188,70 @@
     if (!reportData) return;
     const data = reportData;
     const sections = [
-      { key: 'new_today', title: '오늘 들어온 잡', cls: 'new_today', dateCol: 'wanteddate', dateLabel: '납기일' },
-      { key: 'in_progress', title: '진행중인 잡', cls: 'in_progress', dateCol: 'wanteddate', dateLabel: '납기일', showStatus: true },
-      { key: 'ready', title: '준비된 잡', cls: 'ready', dateCol: 'wanteddate', dateLabel: '납기일' },
-      { key: 'picked_up', title: '오늘 픽업/배달 완료', cls: 'picked_up', dateCol: 'pickupdate', dateLabel: '픽업일' },
-      { key: 'paid', title: '오늘 결제한 잡', cls: 'paid', dateCol: 'ordereddate', dateLabel: '주문일' },
+      { key: 'new_today', title: 'New Today', cls: 'new_today', dateCol: 'wanteddate', dateLabel: 'Due Date' },
+      { key: 'in_progress', title: 'In Progress', cls: 'in_progress', dateCol: 'wanteddate', dateLabel: 'Due Date', showStatus: true },
+      { key: 'ready', title: 'Ready for Pickup', cls: 'ready', dateCol: 'wanteddate', dateLabel: 'Due Date' },
+      { key: 'picked_up', title: 'Picked Up / Delivered Today', cls: 'picked_up', dateCol: 'pickupdate', dateLabel: 'Pickup Date' },
+      { key: 'paid', title: 'Paid Today', cls: 'paid', dateCol: 'ordereddate', dateLabel: 'Order Date', hideOrdered: true, showMethod: true },
     ];
 
     let html = '';
     for (const s of sections) {
       const items = data[s.key];
       html += `<div class="section ${s.cls}">`;
-      html += `<h2>${s.title} <span class="count">(${items.length}건)</span></h2>`;
+      html += `<h2>${s.title} <span class="count">(${items.length} items)</span></h2>`;
       if (items.length === 0) {
-        html += '<p class="empty">없음</p>';
+        html += '<p class="empty">None</p>';
       } else {
         html += `<table>
           <tr>
             <th onclick="handleSort('${s.key}', 'invoicenumber')">Invoice #${getSortIcon(s.key, 'invoicenumber')}</th>
             <th onclick="handleSort('${s.key}', 'account_display')">Account${getSortIcon(s.key, 'account_display')}</th>
             <th onclick="handleSort('${s.key}', 'contact_display')">Contact${getSortIcon(s.key, 'contact_display')}</th>
-            <th onclick="handleSort('${s.key}', 'job_name')">작업 내용${getSortIcon(s.key, 'job_name')}</th>
+            <th onclick="handleSort('${s.key}', 'job_name')">Job Description${getSortIcon(s.key, 'job_name')}</th>
             ${s.showStatus ? `<th onclick="handleSort('${s.key}', 'status')">Status${getSortIcon(s.key, 'status')}</th>` : ''}
-            <th onclick="handleSort('${s.key}', 'ordereddate')">주문일${getSortIcon(s.key, 'ordereddate')}</th>
+            ${!s.hideOrdered ? `<th onclick="handleSort('${s.key}', 'ordereddate')">Ordered${getSortIcon(s.key, 'ordereddate')}</th>` : ''}
             <th onclick="handleSort('${s.key}', '${s.dateCol}')">${s.dateLabel}${getSortIcon(s.key, s.dateCol)}</th>
-            <th onclick="handleSort('${s.key}', 'grandtotal')">금액${getSortIcon(s.key, 'grandtotal')}</th>
+            ${s.showMethod ? `<th onclick="handleSort('${s.key}', 'pay_method_display')">Method${getSortIcon(s.key, 'pay_method_display')}</th>` : ''}
+            <th onclick="handleSort('${s.key}', 'grandtotal')">Amount${getSortIcon(s.key, 'grandtotal')}</th>
           </tr>`;
         let sectionTotal = 0;
         for (const item of items) {
           const amt = parseFloat(item.grandtotal || 0);
           sectionTotal += amt;
           
+          let typeBadge = '';
+          if (s.key === 'paid' && item.transaction_type) {
+            let bgClass = 'bg-mixed';
+            if (item.transaction_type === 'PAID') bgClass = 'bg-paid';
+            else if (item.transaction_type === 'DEPOSIT') bgClass = 'bg-deposit';
+            else if (item.transaction_type === 'AR PAYMENT') bgClass = 'bg-ar';
+            
+            typeBadge = `<span class="badge-type ${bgClass}">${item.transaction_type}</span>`;
+          }
+
           html += `<tr>
             <td>
               ${item.invoicenumber||''}
-              <button class="btn-hide" onclick="hideInvoice('${item.invoicenumber}')" title="리포트에서 숨기기">숨김</button>
+              <button class="btn-hide" onclick="hideInvoice('${item.invoicenumber}')" title="Hide from report">Hide</button>
             </td>
             <td>${item.account_display||'-'}</td>
             <td>${item.contact_display||''}</td>
-            <td>${item.job_name||''}</td>
+            <td>
+              ${typeBadge}
+              ${item.job_name||''}
+              ${item.payment_status === 'PAID' ? '<span class="badge-paid">PAID</span>' : ''}
+              ${(item.payment_status && item.payment_status.startsWith('BAL DUE')) ? `<span class="badge-bal">${item.payment_status}</span>` : ''}
+            </td>
             ${s.showStatus ? `<td>${item.status||'-'}</td>` : ''}
-            <td>${fmt(item.ordereddate)}</td>
+            ${!s.hideOrdered ? `<td>${fmt(item.ordereddate)}</td>` : ''}
             <td>${fmt(item[s.dateCol])}</td>
+            ${s.showMethod ? `<td><span class="badge-method">${item.pay_method_display||'-'}</span></td>` : ''}
             <td>${fmtAmt(item.grandtotal)}</td>
           </tr>`;
         }
         html += `<tr style="font-weight:bold; background:#f9f9f9;">
-          <td colspan="${s.showStatus ? 7 : 6}" style="text-align:right; padding:8px;">Total</td>
+          <td colspan="${(s.showStatus ? 1 : 0) + (!s.hideOrdered ? 1 : 0) + (s.showMethod ? 1 : 0) + 5}" style="text-align:right; padding:8px;">Total</td>
           <td style="padding:8px;">${fmtAmt(sectionTotal)}</td>
         </tr>`;
         html += '</table>';
@@ -216,26 +261,26 @@
     document.getElementById('report').innerHTML = html;
   }
 
-  function exportExcel() {
-    const d = document.getElementById('dateInput').value;
-    window.location.href = '/api/export?target_date=' + d;
-  }
-
   async function sendEmail() {
     const d = document.getElementById('dateInput').value;
-    if (!confirm('사장님께 이메일 보고서를 전송하시겠습니까?')) return;
+    if (!confirm('Do you want to send the report email to the boss?')) return;
     
     try {
       const res = await fetch('/api/report/email?target_date=' + d);
       const result = await res.json();
       if (result.status === 'success') {
-        alert('이메일 전송 성공!');
+        alert('Email sent successfully!');
       } else {
-        alert('에러: ' + result.message);
+        alert('Error: ' + result.message);
       }
     } catch(e) {
-      alert('전송 실패: ' + e.message);
+      alert('Send failed: ' + e.message);
     }
+  }
+
+  function exportExcel() {
+    const d = document.getElementById('dateInput').value;
+    window.location.href = '/api/export?target_date=' + d;
   }
 
   loadReport();

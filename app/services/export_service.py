@@ -9,11 +9,11 @@ def generate_report_xlsx(data):
 
     header_font = Font(bold=True, color="FFFFFF")
     sections = [
-        ("new_today", "오늘 들어온 잡", "4472C4"),
-        ("in_progress", "진행중인 잡", "7030A0"),
-        ("ready", "준비된 잡", "70AD47"),
-        ("picked_up", "오늘 픽업/배달 완료", "ED7D31"),
-        ("paid", "오늘 결제한 잡", "FFC000"),
+        ("new_today", "New Today", "4472C4"),
+        ("in_progress", "In Progress", "7030A0"),
+        ("ready", "Ready for Pickup", "70AD47"),
+        ("picked_up", "Picked Up / Delivered Today", "ED7D31"),
+        ("paid", "Paid Today", "FFC000"),
     ]
 
     row = 1
@@ -21,10 +21,10 @@ def generate_report_xlsx(data):
         ws.cell(row=row, column=1, value=title).font = Font(bold=True, size=12)
         row += 1
         
-        headers = ["Invoice #", "Account", "Contact", "작업 내용"]
+        headers = ["Invoice #", "Account", "Contact", "Job Description"]
         if key == "in_progress":
             headers.append("Status")
-        headers.extend(["주문일", "납기일", "금액"])
+        headers.extend(["Ordered", "Due/Pickup", "Amount"])
 
         for col, h in enumerate(headers, 1):
             cell = ws.cell(row=row, column=col, value=h)

@@ -6,41 +6,67 @@ def format_currency(val):
     return "${:,.2f}".format(float(val or 0))
 
 def generate_mobile_html(data):
+    from datetime import datetime, timedelta
+    target_date = datetime.strptime(data['date'], '%Y-%m-%d')
+    
     cashflow = sum(float(item.get('grandtotal', 0) or 0) for item in data['paid'])
     new_jobs_count = len(data['new_today'])
-    in_progress_count = len(data['in_progress'])
+    new_jobs_total = sum(float(item.get('grandtotal', 0) or 0) for item in data['new_today'])
+    
+    # Filter In Progress: Due within 10 days from today
+    ten_days_later = target_date + timedelta(days=10)
+    in_progress_filtered = []
+    for item in data['in_progress']:
+        due = item.get('wanteddate')
+        if due:
+            if hasattr(due, 'date'): due_date = due.date()
+            else: due_date = datetime.strptime(str(due).split('T')[0], '%Y-%m-%d').date()
+            if due_date <= ten_days_later.date():
+                in_progress_filtered.append(item)
+    
+    ready_count = len(data['ready'])
     picked_up_count = len(data['picked_up'])
 
-    # Building "Cards" instead of tables for mobile
-    def build_cards(items, section_name):
+    def build_cards(items, show_method=False):
         if not items:
-            return "<p style='color: #999; font-style: italic;'>데이터 없음</p>"
+            return "<p style='color: #999; font-style: italic; padding-left: 10px;'>No items</p>"
         
         cards_html = ""
-        for item in items[:10]: # Top 10 for brevity in email
-            # Only show status badge for In Progress section
-            status_badge = ""
-            if section_name == 'in_progress' and item.get('status'):
-                status_badge = f'<span style="background: #f0f0f0; padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #555;">{item["status"]}</span>'
+        for item in items:
+            pay_badge = ""
+            if item.get("payment_status") == "PAID":
+                pay_badge = '<span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 5px;">PAID</span>'
+            elif item.get("payment_status") and "BAL DUE" in item["payment_status"]:
+                pay_badge = f'<span style="background: #FFC000; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 5px;">{item["payment_status"]}</span>'
+
+            type_badge = ""
+            if item.get("transaction_type"):
+                color = "#6f42c1" # Mixed/Default
+                if item["transaction_type"] == "PAID": color = "#28a745"
+                elif item["transaction_type"] == "DEPOSIT": color = "#007bff"
+                elif item["transaction_type"] == "AR PAYMENT": color = "#17a2b8"
+                type_badge = f'<span style="background: {color}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-right: 5px;">{item["transaction_type"]}</span>'
+
+            method_info = f'<div style="font-size: 11px; color: #888; margin-top: 4px;">Method: {item.get("pay_method_display", "N/A")}</div>' if show_method else ""
 
             cards_html += f"""
-            <div style="background: #ffffff; border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="background: #ffffff; border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                 <table width="100%" cellspacing="0" cellpadding="0">
                     <tr>
-                        <td style="font-weight: bold; color: #333; font-size: 16px; text-align: left; padding-bottom: 4px;">
+                        <td style="font-weight: bold; color: #333; font-size: 16px; text-align: left;">
                             #{item['invoicenumber']} - {item['account_display']}
                         </td>
-                        <td style="font-weight: bold; color: #28a745; font-size: 16px; text-align: right; white-space: nowrap; padding-bottom: 4px; vertical-align: top;">
-                            {format_currency(item.get('grandtotal', 0))}
+                        <td style="font-weight: bold; color: #28a745; font-size: 16px; text-align: right; white-space: nowrap; vertical-align: top;">
+                            ${float(item.get('grandtotal', 0)):,.2f}
                         </td>
                     </tr>
                 </table>
-                <div style="color: #666; font-size: 14px;">{item['job_name']}</div>
-                {f'<div style="margin-top: 8px;">{status_badge}</div>' if status_badge else ''}
+                <div style="color: #555; font-size: 14px; margin-top: 4px;">
+                    {type_badge}{item['job_name']}{pay_badge}
+                </div>
+                {method_info}
             </div>
             """
-        if len(items) > 10:
-            cards_html += f"<p style='font-size: 12px; color: #999; text-align: center;'>...외 {len(items)-10}건 더 있음</p>"
         return cards_html
 
     html = f"""
@@ -49,60 +75,48 @@ def generate_mobile_html(data):
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            body {{ font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background-color: #f4f7f9; margin: 0; padding: 10px; }}
-            .container {{ max-width: 500px; margin: 0 auto; }}
-            .header {{ text-align: center; padding: 20px 0; }}
-            .summary-box {{ background: #4472C4; color: white; border-radius: 12px; padding: 25px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
-            .summary-label {{ font-size: 16px; opacity: 0.9; margin-bottom: 8px; }}
-            .summary-value {{ font-size: 40px; font-weight: bold; }}
-            .stats-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 25px; }}
-            .stat-card {{ background: white; border-radius: 10px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }}
-            .stat-num {{ font-size: 22px; font-weight: bold; display: block; }}
-            .stat-lbl {{ font-size: 13px; color: #888; text-transform: uppercase; margin-top: 4px; }}
-            .section-title {{ font-size: 18px; font-weight: bold; color: #333; margin: 25px 0 15px 5px; border-left: 5px solid #4472C4; padding-left: 12px; }}
+            body {{ font-family: 'Helvetica', 'Arial', sans-serif; background-color: #f8f9fa; margin: 0; padding: 15px; }}
+            .container {{ max-width: 550px; margin: 0 auto; }}
+            .summary-card {{ background: #4472C4; color: white; border-radius: 15px; padding: 30px 20px; text-align: center; margin-bottom: 25px; }}
+            .section-title {{ font-size: 18px; font-weight: bold; color: #333; margin: 30px 0 15px 5px; border-left: 5px solid #4472C4; padding-left: 12px; }}
+            .stat-row {{ background: white; border-radius: 10px; padding: 15px; margin-bottom: 10px; display: block; border: 1px solid #eee; }}
         </style>
     </head>
     <body>
         <div class="container">
-            <div class="header">
-                <div style="font-size: 22px; font-weight: bold; color: #333;">Daily Report Summary</div>
-                <div style="font-size: 16px; color: #888;">{data['date']}</div>
+            <div style="text-align: center; padding-bottom: 20px; color: #666; font-size: 14px;">Daily Summary • {data['date']}</div>
+            
+            <div class="summary-card">
+                <div style="font-size: 16px; opacity: 0.9; margin-bottom: 10px;">TOTAL CASH COLLECTED TODAY</div>
+                <div style="font-size: 44px; font-weight: bold;">${cashflow:,.2f}</div>
             </div>
 
-            <div class="summary-box">
-                <div class="summary-label">오늘의 총 수금액</div>
-                <div class="summary-value">{format_currency(cashflow)}</div>
-            </div>
-
-            <div style="width: 100%; overflow: hidden; margin-bottom: 20px;">
-                <table width="100%" cellspacing="0" cellpadding="0">
+            <div class="stat-row">
+                <table width="100%">
                     <tr>
-                        <td width="32%" style="background: white; border-radius: 8px; padding: 15px; text-align: center;">
-                            <span style="font-size: 22px; font-weight: bold; color: #4472C4;">{new_jobs_count}</span>
-                            <div style="font-size: 12px; color: #999; margin-top: 5px;">신규 주문</div>
-                        </td>
-                        <td width="2%"></td>
-                        <td width="32%" style="background: white; border-radius: 8px; padding: 15px; text-align: center;">
-                            <span style="font-size: 22px; font-weight: bold; color: #7030A0;">{in_progress_count}</span>
-                            <div style="font-size: 12px; color: #999; margin-top: 5px;">진행 중</div>
-                        </td>
-                        <td width="2%"></td>
-                        <td width="32%" style="background: white; border-radius: 8px; padding: 15px; text-align: center;">
-                            <span style="font-size: 22px; font-weight: bold; color: #ED7D31;">{picked_up_count}</span>
-                            <div style="font-size: 12px; color: #999; margin-top: 5px;">출고 완료</div>
-                        </td>
+                        <td style="font-size: 16px; color: #4472C4; font-weight: bold;">New Orders Today</td>
+                        <td style="text-align: right; font-size: 18px; font-weight: bold;">{new_jobs_count} jobs</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="font-size: 14px; color: #888; padding-top: 5px;">Total Value: ${new_jobs_total:,.2f}</td>
                     </tr>
                 </table>
             </div>
 
-            <div class="section-title">주요 수금 내역 (Paid)</div>
-            {build_cards(data['paid'], 'paid')}
+            <div class="section-title">Payments Today (Cashflow)</div>
+            {build_cards(data['paid'], show_method=True)}
 
-            <div class="section-title">주요 진행 중 (In Progress)</div>
-            {build_cards(data['in_progress'], 'in_progress')}
+            <div class="section-title">Production (Due in 10 Days)</div>
+            {build_cards(in_progress_filtered)}
 
-            <div style="text-align: center; margin-top: 30px; padding: 20px; color: #aaa; font-size: 11px; border-top: 1px solid #eee;">
-                본 리포트는 PrintSmith 시스템에서 자동으로 생성되었습니다.
+            <div class="section-title">Ready for Pickup</div>
+            {build_cards(data['ready'])}
+
+            <div class="section-title">Completions Today</div>
+            {build_cards(data['picked_up'])}
+
+            <div style="text-align: center; margin-top: 40px; padding: 20px; color: #bbb; font-size: 12px; border-top: 1px solid #eee;">
+                Generated by PrintSmith Reporting System
             </div>
         </div>
     </body>
@@ -117,7 +131,7 @@ async def send_report_email(data):
     message["From"] = SMTP_CONFIG["user"]
     message["To"] = SMTP_CONFIG["to_email"]
     message["Subject"] = f"[{data['date']}] PrintSmith Daily Summary Report"
-    message.set_content("이 메일은 HTML 전용입니다. HTML 지원 메일 클라이언트를 사용해 주세요.")
+    message.set_content("This is an HTML-only email. Please use an HTML-capable email client.")
     message.add_alternative(html_content, subtype="html")
 
     await aiosmtplib.send(
