@@ -7,11 +7,14 @@
   body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
   h1 { color: #333; }
   .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
-  input[type=date] { padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
-  button { padding: 8px 16px; font-size: 14px; border: none; border-radius: 4px; cursor: pointer; }
+  input[type=date], input[type=text], input[type=email], input[type=number] { padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+  button { padding: 10px 16px; font-size: 14px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+  
   .btn-load { background: #4472C4; color: white; }
   .btn-export { background: #70AD47; color: white; }
   .btn-email { background: #5BC0DE; color: white; }
+  .btn-settings { background: #6c757d; color: white; margin-left: auto; }
+  
   .btn-refresh-fixed { 
     position: fixed; 
     top: 20px; 
@@ -27,23 +30,21 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
     cursor: pointer;
     font-size: 16px;
-    font-weight: bold;
     border: 2px solid white;
     transition: all 0.2s;
   }
   .btn-refresh-fixed:hover { background: #218838; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
-  .btn-refresh-fixed:active { transform: translateY(0); }
-  .btn-hide { background: #eee; color: #999; padding: 2px 6px; font-size: 11px; margin-left: 5px; border-radius: 3px; cursor: pointer; border: none; }
-  .btn-hide:hover { background: #ddd; color: #333; }
+
   .section { background: white; border-radius: 8px; padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
   .section h2 { margin-top: 0; font-size: 16px; }
+  
   .new_today h2 { color: #4472C4; }
   .in_progress h2 { color: #7030A0; }
   .ready h2 { color: #70AD47; }
   .picked_up h2 { color: #ED7D31; }
   .paid h2 { color: #B8860B; }
   .spending h2 { color: #d9534f; }
-  .settings h2 { color: #6c757d; }
+
   .badge-paid { background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
   .badge-bal { background: #FFC000; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
   .badge-type { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 5px; color: white; }
@@ -52,153 +53,227 @@
   .bg-ar { background: #17a2b8; }
   .bg-mixed { background: #6f42c1; }
   .badge-method { background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; border: 1px solid #ced4da; }
+
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th { background: #eee; padding: 8px; text-align: left; cursor: pointer; user-select: none; }
   th:hover { background: #ddd; }
-  .sort-icon { font-size: 10px; margin-left: 4px; color: #999; }
   td { padding: 8px; border-bottom: 1px solid #eee; }
+  
+  .btn-hide { background: #eee; color: #999; padding: 2px 6px; font-size: 11px; margin-left: 5px; border-radius: 3px; border: none; cursor: pointer; }
   .empty { color: #999; font-style: italic; }
-  .count { font-size: 12px; color: #666; margin-left: 8px; }
+  
+  /* Modal Styles */
+  .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+  .modal-content { background-color: white; margin: 10% auto; padding: 30px; border-radius: 12px; width: 500px; box-shadow: 0 5px 25px rgba(0,0,0,0.2); }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .close-modal { font-size: 24px; cursor: pointer; color: #999; }
+  
+  .email-tag { background: #e7f1ff; color: #007bff; padding: 5px 10px; border-radius: 20px; font-size: 13px; display: flex; align-items: center; gap: 8px; font-weight: bold; }
+  .remove-email { cursor: pointer; color: #dc3545; }
 </style>
 </head>
 <body>
-<button class="btn-refresh-fixed" onclick="loadReport(true)" title="Refresh Report Data">
-  <span>🔄</span> Refresh
-</button>
+
+<button class="btn-refresh-fixed" onclick="loadReport(true)"><span>🔄</span> Refresh</button>
+
 <h1>📋 PrintSmith Daily Report</h1>
+
 <div class="controls">
   <input type="date" id="dateInput">
   <button class="btn-load" onclick="loadReport()">Load Report</button>
   <button class="btn-export" onclick="exportExcel()">Export Excel</button>
   <button class="btn-email" onclick="sendEmail()">Email to Boss</button>
+  <button class="btn-settings" onclick="openSettings()">⚙️ Settings</button>
   <span id="updateStatus" style="font-size: 12px; color: #666; margin-left: 10px;"></span>
 </div>
+
 <div id="report"></div>
+
 <div id="spendingSection" class="section spending">
   <h2>💸 Daily Spending <span id="spendingCount" class="count"></span></h2>
   <div class="spending-input-row" style="margin-bottom: 20px; background: #fff9f9; padding: 20px; border-radius: 8px; border: 1px dashed #d9534f; display: flex; gap: 15px; align-items: flex-end;">
     <div style="flex: 2;">
       <label style="display: block; font-size: 12px; color: #d9534f; margin-bottom: 5px; font-weight: bold;">Vendor</label>
-      <input type="text" id="spendVendor" placeholder="e.g. Amazon" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+      <input type="text" id="spendVendor" placeholder="e.g. Amazon" style="width: 100%;">
     </div>
     <div style="flex: 4;">
       <label style="display: block; font-size: 12px; color: #d9534f; margin-bottom: 5px; font-weight: bold;">Description</label>
-      <input type="text" id="spendDesc" placeholder="e.g. Paper supplies, Ink" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+      <input type="text" id="spendDesc" placeholder="e.g. Paper supplies" style="width: 100%;">
     </div>
     <div style="flex: 1.5;">
       <label style="display: block; font-size: 12px; color: #d9534f; margin-bottom: 5px; font-weight: bold;">Amount ($)</label>
-      <input type="number" id="spendAmount" placeholder="0.00" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+      <input type="number" id="spendAmount" placeholder="0.00" step="0.01" style="width: 100%;">
     </div>
-    <button onclick="addSpending()" style="background: #d9534f; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap;">Add Entry</button>
+    <button onclick="addSpending()" style="background: #d9534f; color: white; padding: 12px 20px;">Add Entry</button>
   </div>
   <div id="spendingTableContainer"></div>
 </div>
-<div id="hiddenSection" class="section" style="margin-top: 50px; border-top: 2px solid #eee;">
-  <h2>🙈 Managed Hidden List</h2>
-  <div id="hiddenList" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 style="margin:0;">⚙️ Report Settings</h2>
+      <span class="close-modal" onclick="closeSettings()">&times;</span>
+    </div>
+    
+    <div style="margin-bottom: 25px;">
+      <label style="display: block; font-size: 14px; font-weight: bold; margin-bottom: 10px;">Email Recipients</label>
+      <div id="emailTags" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;"></div>
+      <div style="display: flex; gap: 10px;">
+        <input type="email" id="newEmailInput" placeholder="Add email..." style="flex: 1;">
+        <button onclick="addEmailTag()" style="background: #007bff; color: white;">Add</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 25px;">
+      <label style="display: block; font-size: 14px; font-weight: bold; margin-bottom: 10px;">Report Subject Prefix</label>
+      <input type="text" id="setReportPrefix" style="width: 100%;">
+      <p style="font-size: 11px; color: #888; margin-top: 5px;">Format: [Prefix] {{date}} Daily Report</p>
+    </div>
+
+    <div id="hiddenListSection" style="margin-bottom: 25px; padding-top: 20px; border-top: 1px solid #eee;">
+      <label style="display: block; font-size: 14px; font-weight: bold; margin-bottom: 10px;">🙈 Hidden Invoices</label>
+      <div id="hiddenList" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+    </div>
+
+    <div style="text-align: right; margin-top: 30px;">
+      <button onclick="saveSettings()" style="background: #28a745; color: white; padding: 12px 30px;">Save All Changes</button>
+    </div>
+  </div>
 </div>
 
-<div id="settingsSection" class="section settings">
-  <h2>⚙️ Report Settings</h2>
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-    <div>
-      <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px;">Boss's Email Address</label>
-      <input type="email" id="setBossEmail" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
-      <p style="font-size: 11px; color: #888; margin-top: 5px;">Recipients for the "Email to Boss" button.</p>
-    </div>
-    <div>
-      <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px;">Report Title</label>
-      <input type="text" id="setReportTitle" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
-    </div>
-  </div>
-  <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
-    <button onclick="saveSettings()" style="background: #6c757d; color: white; border: none; padding: 10px 25px; border-radius: 4px; cursor: pointer; font-weight: bold;">Save Settings</button>
-    <span id="saveStatus" style="margin-left: 15px; font-size: 13px; color: #28a745; font-weight: bold;"></span>
-  </div>
-</div>
 <script>
   let reportData = null;
   let sortConfig = { key: 'invoicenumber', direction: 'desc', section: null };
   let autoRefreshTimer = null;
+  let currentSettings = { boss_emails: [] };
 
   const today = new Date().toISOString().split('T')[0];
   const dateInput = document.getElementById('dateInput');
   dateInput.value = today;
-  dateInput.max = today; // Restrict future dates
+  dateInput.max = today;
 
   async function loadReport(isAuto = false) {
-    const d = document.getElementById('dateInput').value;
-    if (!isAuto) {
-        document.getElementById('report').innerHTML = '<p>Loading...</p>';
-    }
+    const d = dateInput.value;
+    if (!isAuto) document.getElementById('report').innerHTML = '<p>Loading...</p>';
     
     try {
       const res = await fetch('/api/report?target_date=' + d);
       reportData = await res.json();
       renderReport();
-      loadHiddenList(); 
-      loadSpending(); 
-      loadSettings(); // Load settings
+      loadSpending();
+      loadSettings(); 
       
       const now = new Date().toLocaleTimeString();
-      document.getElementById('updateStatus').innerText = `Last Updated: ${now} (Auto-refresh every 60s)`;
+      document.getElementById('updateStatus').innerText = `Last Updated: ${now} (Auto-refresh 60s)`;
     } catch(e) {
-      if (!isAuto) {
-        document.getElementById('report').innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
-      }
-      console.error('Auto-refresh error:', e);
+      if (!isAuto) document.getElementById('report').innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
     }
     
     if (autoRefreshTimer) clearInterval(autoRefreshTimer);
     autoRefreshTimer = setInterval(() => loadReport(true), 60000);
   }
 
-  async function hideInvoice(invNum) {
-    if (!confirm(`Are you sure you want to permanently hide Invoice #${invNum} from the report?`)) return;
+  /* Settings Logic */
+  function openSettings() { document.getElementById('settingsModal').style.display = 'block'; loadHiddenList(); }
+  function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+
+  async function loadSettings() {
     try {
-      await fetch(`/api/hide/${invNum}`, { method: 'POST' });
-      loadReport();
-    } catch(e) { alert('Failed: ' + e.message); }
+      const res = await fetch('/api/settings');
+      currentSettings = await res.json();
+      document.getElementById('setReportPrefix').value = currentSettings.report_title_prefix;
+      renderEmailTags();
+    } catch(e) { console.error(e); }
   }
 
-  async function loadSpending() {
-    const d = document.getElementById('dateInput').value;
+  function renderEmailTags() {
+    const container = document.getElementById('emailTags');
+    container.innerHTML = currentSettings.boss_emails.map((email, index) => `
+      <div class="email-tag">${email} <span class="remove-email" onclick="removeEmail(${index})">&times;</span></div>
+    `).join('') || '<p class="empty" style="margin:0;">No recipients added.</p>';
+  }
+
+  function addEmailTag() {
+    const input = document.getElementById('newEmailInput');
+    const email = input.value.trim();
+    if (email && !currentSettings.boss_emails.includes(email)) {
+      currentSettings.boss_emails.push(email);
+      input.value = '';
+      renderEmailTags();
+    }
+  }
+
+  function removeEmail(index) {
+    currentSettings.boss_emails.splice(index, 1);
+    renderEmailTags();
+  }
+
+  async function saveSettings() {
+    currentSettings.report_title_prefix = document.getElementById('setReportPrefix').value;
     try {
-      const res = await fetch(`/api/spending?target_date=${d}`);
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentSettings)
+      });
+      alert('Settings saved!');
+      closeSettings();
+    } catch(e) { alert('Failed to save settings'); }
+  }
+
+  /* Hiding Logic */
+  async function hideInvoice(invNum) {
+    if (!confirm(`Hide Invoice #${invNum} permanently?`)) return;
+    try { await fetch(`/api/hide/${invNum}`, { method: 'POST' }); loadReport(); } catch(e) { alert(e.message); }
+  }
+
+  async function loadHiddenList() {
+    try {
+      const res = await fetch('/api/hidden');
       const list = await res.json();
-      renderSpending(list);
+      document.getElementById('hiddenList').innerHTML = list.map(inv => `
+        <span style="background:#f0f0f0; padding:4px 8px; border-radius:4px; font-size:12px; border:1px solid #ccc;">
+          #${inv} <button onclick="unhideInvoice('${inv}')" style="background:none; border:none; color:red; cursor:pointer; font-weight:bold;">[Unhide]</button>
+        </span>
+      `).join('') || '<p class="empty">No hidden items</p>';
+    } catch(e) { console.error(e); }
+  }
+
+  async function unhideInvoice(invNum) {
+    try { await fetch(`/api/unhide/${invNum}`, { method: 'POST' }); loadReport(); loadHiddenList(); } catch(e) { alert(e.message); }
+  }
+
+  /* Spending Logic */
+  async function loadSpending() {
+    try {
+      const res = await fetch(`/api/spending?target_date=${dateInput.value}`);
+      renderSpending(await res.json());
     } catch(e) { console.error(e); }
   }
 
   async function addSpending() {
-    const date = document.getElementById('dateInput').value;
     const vendor = document.getElementById('spendVendor').value;
     const description = document.getElementById('spendDesc').value;
     const amount = document.getElementById('spendAmount').value;
-
-    if (!vendor || !amount) { alert('Please enter vendor and amount'); return; }
-
+    if (!vendor || !amount) { alert('Enter vendor and amount'); return; }
     try {
-      await fetch(`/api/spending?target_date=${date}`, {
+      await fetch(`/api/spending?target_date=${dateInput.value}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vendor, description, amount: parseFloat(amount) })
       });
-      // Clear inputs
       document.getElementById('spendVendor').value = '';
       document.getElementById('spendDesc').value = '';
       document.getElementById('spendAmount').value = '';
       loadSpending();
-    } catch(e) { alert('Failed to add spending'); }
+    } catch(e) { alert('Failed'); }
   }
 
   async function deleteSpending(id) {
-    const d = document.getElementById('dateInput').value;
-    if (!confirm('Delete this entry?')) return;
-    try {
-      await fetch(`/api/spending/${d}/${id}`, { method: 'DELETE' });
-      loadSpending();
-    } catch(e) { alert('Delete failed'); }
+    if (!confirm('Delete entry?')) return;
+    try { await fetch(`/api/spending/${dateInput.value}/${id}`, { method: 'DELETE' }); loadSpending(); } catch(e) { alert('Failed'); }
   }
 
   function renderSpending(list) {
@@ -207,93 +282,44 @@
     if (list.length === 0) {
       html = '<p class="empty">No spending recorded for this date.</p>';
     } else {
-      html = '<table><tr><th>Vendor</th><th>Description</th><th>Amount</th><th style="width:50px;"></th></tr>';
+      html = '<table><tr><th>Vendor</th><th>Description</th><th>Amount</th><th></th></tr>';
       let total = 0;
       for (const s of list) {
         total += s.amount;
-        html += `<tr>
-          <td>${s.vendor}</td>
-          <td>${s.description}</td>
-          <td>${fmtAmt(s.amount)}</td>
-          <td style="text-align:center;"><button onclick="deleteSpending('${s.id}')" style="color:red; background:none; border:none; cursor:pointer; font-weight:bold;">✖</button></td>
-        </tr>`;
+        html += `<tr><td>${s.vendor}</td><td>${s.description}</td><td>${fmtAmt(s.amount)}</td><td style="text-align:center;"><button onclick="deleteSpending('${s.id}')" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td></tr>`;
       }
       html += `<tr style="font-weight:bold; background:#fff9f9;"><td colspan="2" style="text-align:right; padding:8px;">Total Spending</td><td style="padding:8px;">${fmtAmt(total)}</td><td></td></tr></table>`;
     }
     document.getElementById('spendingTableContainer').innerHTML = html;
   }
 
-  async function loadHiddenList() {
-    try {
-      const res = await fetch('/api/hidden');
-      const list = await res.json();
-      let html = '';
-      if (list.length === 0) html = '<p class="empty">No hidden items</p>';
-      for (const inv of list) {
-        html += `<span style="background:#f0f0f0; padding:4px 8px; border-radius:4px; font-size:12px; border:1px solid #ccc;">
-          #${inv} <button onclick="unhideInvoice('${inv}')" style="padding:0; background:none; border:none; color:red; cursor:pointer; font-weight:bold; margin-left:5px;">[Unhide]</button>
-        </span>`;
-      }
-      document.getElementById('hiddenList').innerHTML = html;
-    } catch(e) { console.error(e); }
-  }
-
-  async function unhideInvoice(invNum) {
-    try {
-      await fetch(`/api/unhide/${invNum}`, { method: 'POST' });
-      loadReport();
-    } catch(e) { alert('Failed: ' + e.message); }
-  }
-
-  function fmt(val) {
-    if (!val) return '-';
-    return String(val).split('T')[0];
-  }
+  /* Common Helpers */
+  function fmt(val) { return val ? String(val).split('T')[0] : '-'; }
+  function fmtAmt(val) { return '$' + parseFloat(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
   function handleSort(sectionKey, columnKey) {
     if (sortConfig.section === sectionKey && sortConfig.key === columnKey) {
       sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
     } else {
-      sortConfig.section = sectionKey;
-      sortConfig.key = columnKey;
-      sortConfig.direction = 'desc'; 
+      sortConfig.section = sectionKey; sortConfig.key = columnKey; sortConfig.direction = 'desc'; 
     }
-
     reportData[sectionKey].sort((a, b) => {
-      let v1 = a[columnKey];
-      let v2 = b[columnKey];
-      
-      if (columnKey === 'invoicenumber' || columnKey === 'grandtotal') {
-        v1 = parseFloat(v1 || 0);
-        v2 = parseFloat(v2 || 0);
-      } else {
-        v1 = String(v1 || '').toLowerCase();
-        v2 = String(v2 || '').toLowerCase();
-      }
-
+      let v1 = a[columnKey], v2 = b[columnKey];
+      if (columnKey === 'invoicenumber' || columnKey === 'grandtotal') { v1 = parseFloat(v1 || 0); v2 = parseFloat(v2 || 0); }
+      else { v1 = String(v1 || '').toLowerCase(); v2 = String(v2 || '').toLowerCase(); }
       if (v1 < v2) return sortConfig.direction === 'asc' ? -1 : 1;
       if (v1 > v2) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
-
     renderReport();
   }
 
   function getSortIcon(sectionKey, columnKey) {
-    if (sortConfig.section === sectionKey && sortConfig.key === columnKey) {
-      return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
-    }
-    return '';
-  }
-
-  function fmtAmt(val) {
-    const amt = parseFloat(val || 0);
-    return '$' + amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (sortConfig.section === sectionKey && sortConfig.key === columnKey) ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : '';
   }
 
   function renderReport() {
     if (!reportData) return;
-    const data = reportData;
     const sections = [
       { key: 'new_today', title: 'New Today', cls: 'new_today', dateCol: 'wanteddate', dateLabel: 'Due Date' },
       { key: 'in_progress', title: 'In Progress', cls: 'in_progress', dateCol: 'wanteddate', dateLabel: 'Due Date', showStatus: true },
@@ -304,14 +330,11 @@
 
     let html = '';
     for (const s of sections) {
-      const items = data[s.key];
-      html += `<div class="section ${s.cls}">`;
-      html += `<h2>${s.title} <span class="count">(${items.length} items)</span></h2>`;
-      if (items.length === 0) {
-        html += '<p class="empty">None</p>';
-      } else {
-        html += `<table>
-          <tr>
+      const items = reportData[s.key];
+      html += `<div class="section ${s.cls}"><h2>${s.title} <span class="count">(${items.length} items)</span></h2>`;
+      if (items.length === 0) { html += '<p class="empty">None</p>'; } 
+      else {
+        html += `<table><tr>
             <th onclick="handleSort('${s.key}', 'invoicenumber')">Invoice #${getSortIcon(s.key, 'invoicenumber')}</th>
             <th onclick="handleSort('${s.key}', 'account_display')">Account${getSortIcon(s.key, 'account_display')}</th>
             <th onclick="handleSort('${s.key}', 'contact_display')">Contact${getSortIcon(s.key, 'contact_display')}</th>
@@ -324,32 +347,13 @@
           </tr>`;
         let sectionTotal = 0;
         for (const item of items) {
-          const amt = parseFloat(item.grandtotal || 0);
-          sectionTotal += amt;
-          
-          let typeBadge = '';
-          if (s.key === 'paid' && item.transaction_type) {
-            let bgClass = 'bg-mixed';
-            if (item.transaction_type === 'PAID') bgClass = 'bg-paid';
-            else if (item.transaction_type === 'DEPOSIT') bgClass = 'bg-deposit';
-            else if (item.transaction_type === 'AR PAYMENT') bgClass = 'bg-ar';
-            
-            typeBadge = `<span class="badge-type ${bgClass}">${item.transaction_type}</span>`;
-          }
-
+          sectionTotal += parseFloat(item.grandtotal || 0);
+          let typeBadge = (s.key === 'paid' && item.transaction_type) ? `<span class="badge-type ${item.transaction_type === 'PAID' ? 'bg-paid' : (item.transaction_type === 'DEPOSIT' ? 'bg-deposit' : 'bg-mixed')}">${item.transaction_type}</span>` : '';
           html += `<tr>
-            <td>
-              ${item.invoicenumber||''}
-              <button class="btn-hide" onclick="hideInvoice('${item.invoicenumber}')" title="Hide from report">Hide</button>
-            </td>
+            <td>${item.invoicenumber||''}<button class="btn-hide" onclick="hideInvoice('${item.invoicenumber}')">Hide</button></td>
             <td>${item.account_display||'-'}</td>
             <td>${item.contact_display||''}</td>
-            <td>
-              ${typeBadge}
-              ${item.job_name||''}
-              ${item.payment_status === 'PAID' ? '<span class="badge-paid">PAID</span>' : ''}
-              ${(item.payment_status && item.payment_status.startsWith('BAL DUE')) ? `<span class="badge-bal">${item.payment_status}</span>` : ''}
-            </td>
+            <td>${typeBadge}${item.job_name||''}${item.payment_status === 'PAID' ? '<span class="badge-paid">PAID</span>' : (item.payment_status && item.payment_status.startsWith('BAL DUE') ? `<span class="badge-bal">${item.payment_status}</span>` : '')}</td>
             ${s.showStatus ? `<td>${item.status||'-'}</td>` : ''}
             ${!s.hideOrdered ? `<td>${fmt(item.ordereddate)}</td>` : ''}
             <td>${fmt(item[s.dateCol])}</td>
@@ -357,11 +361,7 @@
             <td>${fmtAmt(item.grandtotal)}</td>
           </tr>`;
         }
-        html += `<tr style="font-weight:bold; background:#f9f9f9;">
-          <td colspan="${(s.showStatus ? 1 : 0) + (!s.hideOrdered ? 1 : 0) + (s.showMethod ? 1 : 0) + 5}" style="text-align:right; padding:8px;">Total</td>
-          <td style="padding:8px;">${fmtAmt(sectionTotal)}</td>
-        </tr>`;
-        html += '</table>';
+        html += `<tr style="font-weight:bold; background:#f9f9f9;"><td colspan="${(s.showStatus?1:0)+(!s.hideOrdered?1:0)+(s.showMethod?1:0)+5}" style="text-align:right; padding:8px;">Total</td><td style="padding:8px;">${fmtAmt(sectionTotal)}</td></tr></table>`;
       }
       html += '</div>';
     }
@@ -369,56 +369,15 @@
   }
 
   async function sendEmail() {
-    const d = document.getElementById('dateInput').value;
-    if (!confirm('Do you want to send the report email to the boss?')) return;
-    
+    if (!confirm('Send report email?')) return;
     try {
-      const res = await fetch('/api/report/email?target_date=' + d);
+      const res = await fetch('/api/report/email?target_date=' + dateInput.value);
       const result = await res.json();
-      if (result.status === 'success') {
-        alert('Email sent successfully!');
-      } else {
-        alert('Error: ' + result.message);
-      }
-    } catch(e) {
-      alert('Send failed: ' + e.message);
-    }
+      alert(result.status === 'success' ? 'Email sent!' : 'Error: ' + result.message);
+    } catch(e) { alert('Failed: ' + e.message); }
   }
 
-  function exportExcel() {
-    const d = document.getElementById('dateInput').value;
-    window.location.href = '/api/export?target_date=' + d;
-  }
-
-  async function loadSettings() {
-    try {
-      const res = await fetch('/api/settings');
-      const settings = await res.json();
-      document.getElementById('setBossEmail').value = settings.boss_email;
-      document.getElementById('setReportTitle').value = settings.report_title;
-    } catch(e) { console.error(e); }
-  }
-
-  async function saveSettings() {
-    const boss_email = document.getElementById('setBossEmail').value;
-    const report_title = document.getElementById('setReportTitle').value;
-
-    try {
-      await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            boss_email, 
-            report_title,
-            auto_send_enabled: false,
-            auto_send_time: "17:00"
-        })
-      });
-      const status = document.getElementById('saveStatus');
-      status.innerText = 'Settings saved!';
-      setTimeout(() => status.innerText = '', 3000);
-    } catch(e) { alert('Failed to save settings'); }
-  }
+  function exportExcel() { window.location.href = '/api/export?target_date=' + dateInput.value; }
 
   loadReport();
 </script>

@@ -11,10 +11,10 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/api")
 
 class SettingsUpdate(BaseModel):
-    boss_email: str
+    boss_emails: list[str]
     auto_send_enabled: bool
     auto_send_time: str
-    report_title: str
+    report_title_prefix: str
 
 @router.get("/settings")
 def get_settings():

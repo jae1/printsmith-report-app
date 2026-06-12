@@ -4,10 +4,10 @@ import os
 SETTINGS_FILE = "app_settings.json"
 
 DEFAULT_SETTINGS = {
-    "boss_email": "7904001@gmail.com",
+    "boss_emails": ["7904001@gmail.com"],
     "auto_send_enabled": False,
-    "auto_send_time": "17:00", # 5 PM
-    "report_title": "Daily Summary Report"
+    "auto_send_time": "17:00",
+    "report_title_prefix": "Overnight"
 }
 
 def load_settings():

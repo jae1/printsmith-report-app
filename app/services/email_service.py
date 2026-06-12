@@ -132,8 +132,9 @@ async def send_report_email(data):
     
     message = EmailMessage()
     message["From"] = SMTP_CONFIG["user"]
-    message["To"] = settings["boss_email"]
-    message["Subject"] = f"[{data['date']}] {settings['report_title']}"
+    # Join list of emails into a comma-separated string for "To" header
+    message["To"] = ", ".join(settings["boss_emails"])
+    message["Subject"] = f"Overnight {data['date']} Daily Report"
     message.set_content("This is an HTML-only email. Please use an HTML-capable email client.")
     message.add_alternative(html_content, subtype="html")
 
