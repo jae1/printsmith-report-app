@@ -124,13 +124,16 @@ def generate_mobile_html(data):
     """
     return html
 
+from app.services import settings_service
+
 async def send_report_email(data):
+    settings = settings_service.load_settings()
     html_content = generate_mobile_html(data)
     
     message = EmailMessage()
     message["From"] = SMTP_CONFIG["user"]
-    message["To"] = SMTP_CONFIG["to_email"]
-    message["Subject"] = f"[{data['date']}] PrintSmith Daily Summary Report"
+    message["To"] = settings["boss_email"]
+    message["Subject"] = f"[{data['date']}] {settings['report_title']}"
     message.set_content("This is an HTML-only email. Please use an HTML-capable email client.")
     message.add_alternative(html_content, subtype="html")
 

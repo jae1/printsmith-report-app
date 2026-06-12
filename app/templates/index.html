@@ -43,6 +43,7 @@
   .picked_up h2 { color: #ED7D31; }
   .paid h2 { color: #B8860B; }
   .spending h2 { color: #d9534f; }
+  .settings h2 { color: #6c757d; }
   .badge-paid { background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
   .badge-bal { background: #FFC000; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
   .badge-type { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 5px; color: white; }
@@ -96,6 +97,25 @@
   <h2>🙈 Managed Hidden List</h2>
   <div id="hiddenList" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
 </div>
+
+<div id="settingsSection" class="section settings">
+  <h2>⚙️ Report Settings</h2>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <div>
+      <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px;">Boss's Email Address</label>
+      <input type="email" id="setBossEmail" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+      <p style="font-size: 11px; color: #888; margin-top: 5px;">Recipients for the "Email to Boss" button.</p>
+    </div>
+    <div>
+      <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px;">Report Title</label>
+      <input type="text" id="setReportTitle" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+    </div>
+  </div>
+  <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+    <button onclick="saveSettings()" style="background: #6c757d; color: white; border: none; padding: 10px 25px; border-radius: 4px; cursor: pointer; font-weight: bold;">Save Settings</button>
+    <span id="saveStatus" style="margin-left: 15px; font-size: 13px; color: #28a745; font-weight: bold;"></span>
+  </div>
+</div>
 <script>
   let reportData = null;
   let sortConfig = { key: 'invoicenumber', direction: 'desc', section: null };
@@ -117,7 +137,8 @@
       reportData = await res.json();
       renderReport();
       loadHiddenList(); 
-      loadSpending(); // Load spending
+      loadSpending(); 
+      loadSettings(); // Load settings
       
       const now = new Date().toLocaleTimeString();
       document.getElementById('updateStatus').innerText = `Last Updated: ${now} (Auto-refresh every 60s)`;
@@ -367,6 +388,36 @@
   function exportExcel() {
     const d = document.getElementById('dateInput').value;
     window.location.href = '/api/export?target_date=' + d;
+  }
+
+  async function loadSettings() {
+    try {
+      const res = await fetch('/api/settings');
+      const settings = await res.json();
+      document.getElementById('setBossEmail').value = settings.boss_email;
+      document.getElementById('setReportTitle').value = settings.report_title;
+    } catch(e) { console.error(e); }
+  }
+
+  async function saveSettings() {
+    const boss_email = document.getElementById('setBossEmail').value;
+    const report_title = document.getElementById('setReportTitle').value;
+
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            boss_email, 
+            report_title,
+            auto_send_enabled: false,
+            auto_send_time: "17:00"
+        })
+      });
+      const status = document.getElementById('saveStatus');
+      status.innerText = 'Settings saved!';
+      setTimeout(() => status.innerText = '', 3000);
+    } catch(e) { alert('Failed to save settings'); }
   }
 
   loadReport();

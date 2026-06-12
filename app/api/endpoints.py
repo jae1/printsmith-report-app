@@ -5,10 +5,25 @@ from app.services.report_service import get_report_data
 from app.services.export_service import generate_report_xlsx
 from app.services.email_service import send_report_email
 from app.core.config import SMTP_CONFIG
-from app.services import hide_service, spending_service
+from app.services import hide_service, spending_service, settings_service
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api")
+
+class SettingsUpdate(BaseModel):
+    boss_email: str
+    auto_send_enabled: bool
+    auto_send_time: str
+    report_title: str
+
+@router.get("/settings")
+def get_settings():
+    return settings_service.load_settings()
+
+@router.post("/settings")
+def update_settings(settings: SettingsUpdate):
+    settings_service.save_settings(settings.dict())
+    return {"status": "success"}
 
 class SpendingCreate(BaseModel):
     vendor: str
