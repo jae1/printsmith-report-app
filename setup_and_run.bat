@@ -1,17 +1,30 @@
 @echo off
-echo [1/3] Fetching latest code from GitHub...
+:loop
+cls
+echo ======================================================
+echo  PrintSmith Report Server - Auto Update Mode
+echo ======================================================
+echo.
+echo [1/2] Checking for latest code from GitHub...
 git pull origin main
 
 if not exist "venv" (
-    echo [2/3] Creating virtual environment...
+    echo.
+    echo [*] Creating virtual environment...
     python -m venv venv
 )
 
-echo [2/3] Activating environment and updating libraries...
+echo.
+echo [2/2] Starting Server...
+echo Access at: http://localhost:8000
+echo.
+echo (Press Ctrl+C and then 'N' to update and restart)
+echo ------------------------------------------------------
 call venv\Scripts\activate
 pip install -r requirements.txt
-
-echo [3/3] Starting PrintSmith Report Server...
-echo Access at: http://localhost:8000
 python main.py
-pause
+
+echo.
+echo Server stopped. Checking for updates and restarting in 5 seconds...
+timeout /t 5
+goto loop
