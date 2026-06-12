@@ -17,21 +17,22 @@
     top: 20px; 
     right: 20px; 
     z-index: 1000; 
-    background: #6c757d; 
+    background: #28a745; 
     color: white; 
-    border-radius: 50%; 
-    width: 45px; 
-    height: 45px; 
+    padding: 12px 20px;
+    border-radius: 30px; 
     display: flex; 
     align-items: center; 
-    justify-content: center; 
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2); 
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
     cursor: pointer;
-    font-size: 18px;
-    border: none;
-    transition: transform 0.2s;
+    font-size: 16px;
+    font-weight: bold;
+    border: 2px solid white;
+    transition: all 0.2s;
   }
-  .btn-refresh-fixed:hover { background: #5a6268; transform: rotate(180deg); }
+  .btn-refresh-fixed:hover { background: #218838; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+  .btn-refresh-fixed:active { transform: translateY(0); }
   .btn-hide { background: #eee; color: #999; padding: 2px 6px; font-size: 11px; margin-left: 5px; border-radius: 3px; cursor: pointer; border: none; }
   .btn-hide:hover { background: #ddd; color: #333; }
   .section { background: white; border-radius: 8px; padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
@@ -59,7 +60,9 @@
 </style>
 </head>
 <body>
-<button class="btn-refresh-fixed" onclick="loadReport(true)" title="Quick Refresh">🔄</button>
+<button class="btn-refresh-fixed" onclick="loadReport(true)" title="Refresh Report Data">
+  <span>🔄</span> Refresh
+</button>
 <h1>📋 PrintSmith Daily Report</h1>
 <div class="controls">
   <input type="date" id="dateInput">

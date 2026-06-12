@@ -53,6 +53,7 @@ def get_report_data(target_date=None):
         FROM invoicebase ib
         {join_tables}
         WHERE ib.isdeleted = false
+        AND ib.voided = false
         AND e.id IS NULL
         AND DATE(ib.ordereddate) = %s
         ORDER BY ib.invoicenumber DESC
@@ -65,6 +66,7 @@ def get_report_data(target_date=None):
         FROM invoicebase ib
         {join_tables}
         WHERE ib.isdeleted = false
+        AND ib.voided = false
         AND e.id IS NULL
         AND ib.onpendinglist = true
         AND (ib.offpendingdate IS NULL OR ib.offpendingdate::text = '')
@@ -81,6 +83,7 @@ def get_report_data(target_date=None):
         FROM invoicebase ib
         {join_tables}
         WHERE ib.isdeleted = false
+        AND ib.voided = false
         AND e.id IS NULL
         AND (ib.documentlocation_id IN (1158, 3226, 3227, 3228) OR ib.readytopickup = true)
         AND (ib.documentlocation_id IS NULL OR ib.documentlocation_id NOT IN (1153, 3221))
@@ -97,6 +100,7 @@ def get_report_data(target_date=None):
         FROM invoicebase ib
         {join_tables}
         WHERE ib.isdeleted = false
+        AND ib.voided = false
         AND e.id IS NULL
         AND (
             (ib.pickupdate IS NOT NULL AND ib.pickupdate::text != '' AND DATE(ib.pickupdate) = %s)
@@ -126,7 +130,7 @@ def get_report_data(target_date=None):
             CASE WHEN ah.recordtype = '2' THEN 1 ELSE 0 END as is_payment
         FROM accounthistorydata ah
         LEFT JOIN tapedepositrecord tdr ON ah.invoicenumber = tdr.invoicenumber AND ah.recordtype = '7'
-        LEFT JOIN invoicebase ib ON ah.invoicenumber = ib.invoicenumber AND ib.isdeleted = false
+        LEFT JOIN invoicebase ib ON ah.invoicenumber = ib.invoicenumber AND ib.isdeleted = false AND ib.voided = false
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p_con ON c.id = p_con.id
         LEFT JOIN account a ON ib.account_id = a.id
