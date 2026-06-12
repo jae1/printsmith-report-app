@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+app_settings.json
+daily_spending.json
+hidden_invoices.json
+.DS_Store
