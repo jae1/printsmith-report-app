@@ -66,7 +66,8 @@
   .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
   .modal-content { background-color: white; margin: 10% auto; padding: 30px; border-radius: 12px; width: 500px; box-shadow: 0 5px 25px rgba(0,0,0,0.2); }
   .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .close-modal { font-size: 24px; cursor: pointer; color: #999; }
+  .close-modal { font-size: 32px; cursor: pointer; color: #999; background: none; border: none; padding: 0; line-height: 1; margin-top: -10px; }
+  .close-modal:hover { color: #d9534f; }
   
   .email-tag { background: #e7f1ff; color: #007bff; padding: 5px 10px; border-radius: 20px; font-size: 13px; display: flex; align-items: center; gap: 8px; font-weight: bold; }
   .remove-email { cursor: pointer; color: #dc3545; }
@@ -114,7 +115,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h2 style="margin:0;">⚙️ Report Settings</h2>
-      <span class="close-modal" onclick="closeSettings()">&times;</span>
+      <button class="close-modal" onclick="closeSettings()">&times;</button>
     </div>
     
     <div style="margin-bottom: 25px;">
