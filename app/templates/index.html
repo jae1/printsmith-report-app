@@ -132,6 +132,32 @@
       <p style="font-size: 11px; color: #888; margin-top: 5px;">Format: [Prefix] {{date}} Daily Report</p>
     </div>
 
+    <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #ddd;">
+      <label style="display: flex; align-items: center; font-size: 14px; font-weight: bold; margin-bottom: 15px; cursor: pointer;">
+        <input type="checkbox" id="setAutoEnable" style="width: auto; margin-right: 10px; transform: scale(1.2);">
+        Enable Automated Daily Email
+      </label>
+      
+      <div id="autoSettingsOptions" style="opacity: 0.5; pointer-events: none; transition: opacity 0.3s;">
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Time to Send</label>
+            <input type="time" id="setAutoTime" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+        </div>
+        <div>
+            <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Days to Send</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px;">
+                <label><input type="checkbox" class="day-chk" value="0"> Mon</label>
+                <label><input type="checkbox" class="day-chk" value="1"> Tue</label>
+                <label><input type="checkbox" class="day-chk" value="2"> Wed</label>
+                <label><input type="checkbox" class="day-chk" value="3"> Thu</label>
+                <label><input type="checkbox" class="day-chk" value="4"> Fri</label>
+                <label><input type="checkbox" class="day-chk" value="5"> Sat</label>
+                <label><input type="checkbox" class="day-chk" value="6"> Sun</label>
+            </div>
+        </div>
+      </div>
+    </div>
+
     <div id="hiddenListSection" style="margin-bottom: 25px; padding-top: 20px; border-top: 1px solid #eee;">
       <label style="display: block; font-size: 14px; font-weight: bold; margin-bottom: 10px;">🙈 Hidden Invoices</label>
       <div id="hiddenList" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
@@ -179,11 +205,30 @@
   function openSettings() { document.getElementById('settingsModal').style.display = 'block'; loadHiddenList(); }
   function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
 
+  document.getElementById('setAutoEnable').addEventListener('change', function(e) {
+      const opts = document.getElementById('autoSettingsOptions');
+      opts.style.opacity = e.target.checked ? '1' : '0.5';
+      opts.style.pointerEvents = e.target.checked ? 'auto' : 'none';
+  });
+
   async function loadSettings() {
     try {
       const res = await fetch('/api/settings');
       currentSettings = await res.json();
       document.getElementById('setReportPrefix').value = currentSettings.report_title_prefix;
+      
+      const autoEnable = document.getElementById('setAutoEnable');
+      autoEnable.checked = currentSettings.auto_send_enabled;
+      document.getElementById('setAutoTime').value = currentSettings.auto_send_time;
+      
+      // Trigger visual update for options
+      autoEnable.dispatchEvent(new Event('change'));
+
+      const days = currentSettings.auto_send_days || [];
+      document.querySelectorAll('.day-chk').forEach(chk => {
+          chk.checked = days.includes(parseInt(chk.value));
+      });
+
       renderEmailTags();
     } catch(e) { console.error(e); }
   }
@@ -212,6 +257,15 @@
 
   async function saveSettings() {
     currentSettings.report_title_prefix = document.getElementById('setReportPrefix').value;
+    currentSettings.auto_send_enabled = document.getElementById('setAutoEnable').checked;
+    currentSettings.auto_send_time = document.getElementById('setAutoTime').value || "17:00";
+    
+    const selectedDays = [];
+    document.querySelectorAll('.day-chk:checked').forEach(chk => {
+        selectedDays.push(parseInt(chk.value));
+    });
+    currentSettings.auto_send_days = selectedDays;
+
     try {
       await fetch('/api/settings', {
         method: 'POST',
