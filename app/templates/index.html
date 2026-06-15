@@ -36,7 +36,10 @@
   .btn-refresh-fixed:hover { background: #218838; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
 
   .section { background: white; border-radius: 8px; padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-  .section h2 { margin-top: 0; font-size: 16px; }
+  .section h2 { margin-top: 0; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+  .section h2::after { content: '▼'; font-size: 12px; transition: transform 0.3s; }
+  .section.collapsed h2::after { transform: rotate(-90deg); }
+  .section.collapsed table, .section.collapsed .empty, .section.collapsed .spending-input-row, .section.collapsed #spendingTableContainer, .section.collapsed #hiddenTableContainer { display: none; }
   
   .new_today h2 { color: #4472C4; }
   .in_progress h2 { color: #7030A0; }
@@ -382,6 +385,16 @@
   }
 
   /* Common Helpers */
+  function toggleSection(header) {
+    header.parentElement.classList.toggle('collapsed');
+  }
+
+  document.addEventListener('click', function(e) {
+    if (e.target.tagName === 'H2' && e.target.parentElement.classList.contains('section')) {
+      toggleSection(e.target);
+    }
+  });
+
   function fmt(val) { return val ? String(val).split('T')[0] : '-'; }
   function fmtAmt(val) { return '$' + parseFloat(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
