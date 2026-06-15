@@ -89,6 +89,27 @@
   
   .email-tag { background: #e7f1ff; color: #007bff; padding: 5px 10px; border-radius: 20px; font-size: 13px; display: flex; align-items: center; gap: 8px; font-weight: bold; }
   .remove-email { cursor: pointer; color: #dc3545; }
+
+  /* Autocomplete Styles */
+  .autocomplete-container { position: relative; width: 100%; }
+  .autocomplete-list { 
+    position: absolute; 
+    top: 100%; 
+    left: 0; 
+    right: 0; 
+    background: white; 
+    border: 1px solid #ddd; 
+    border-top: none; 
+    border-radius: 0 0 4px 4px; 
+    max-height: 200px; 
+    overflow-y: auto; 
+    z-index: 100; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    display: none;
+  }
+  .autocomplete-item { padding: 10px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #f9f9f9; }
+  .autocomplete-item:hover { background: #f0f7ff; color: #007bff; }
+  .autocomplete-item:last-child { border-bottom: none; }
 </style>
 </head>
 <body>
@@ -126,8 +147,10 @@
   <div class="spending-input-row" style="margin-bottom: 20px; background: #fff9f9; padding: 20px; border-radius: 8px; border: 1px dashed #d9534f; display: flex; gap: 15px; align-items: flex-end;">
     <div style="flex: 2;">
       <label style="display: block; font-size: 12px; color: #d9534f; margin-bottom: 5px; font-weight: bold;">Vendor</label>
-      <input type="text" id="spendVendor" list="vendorList" placeholder="e.g. Amazon" style="width: 100%;">
-      <datalist id="vendorList"></datalist>
+      <div class="autocomplete-container">
+        <input type="text" id="spendVendor" placeholder="e.g. Amazon" style="width: 100%;" autocomplete="off">
+        <div id="vendorAutocompleteList" class="autocomplete-list"></div>
+      </div>
     </div>
     <div style="flex: 4;">
       <label style="display: block; font-size: 12px; color: #d9534f; margin-bottom: 5px; font-weight: bold;">Description</label>
@@ -376,14 +399,49 @@
     } catch(e) { alert('Failed'); }
   }
 
+  let vendorData = [];
   async function loadVendors() {
     try {
       const res = await fetch('/api/vendors');
-      const vendors = await res.json();
-      const dl = document.getElementById('vendorList');
-      dl.innerHTML = vendors.map(v => `<option value="${v}">${v}</option>`).join('');
+      vendorData = await res.json();
     } catch(e) { console.error('Failed to load vendors', e); }
   }
+
+  const vendorInput = document.getElementById('spendVendor');
+  const vendorList = document.getElementById('vendorAutocompleteList');
+
+  vendorInput.addEventListener('input', function() {
+    const val = this.value.toLowerCase();
+    vendorList.innerHTML = '';
+    if (!val) {
+      vendorList.style.display = 'none';
+      return;
+    }
+
+    const matches = vendorData.filter(v => v.toLowerCase().includes(val));
+    if (matches.length > 0) {
+      matches.forEach(match => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.innerText = match;
+        div.addEventListener('click', function() {
+          vendorInput.value = match;
+          vendorList.style.display = 'none';
+        });
+        vendorList.appendChild(div);
+      });
+      vendorList.style.display = 'block';
+    } else {
+      vendorList.style.display = 'none';
+    }
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    if (e.target !== vendorInput) {
+      vendorList.style.display = 'none';
+    }
+  });
 
   async function deleteSpending(id) {
     if (!confirm('Delete entry?')) return;
