@@ -50,7 +50,11 @@
   .section h2 .toggle-icon { width: 30px; text-align: right; font-size: 12px; transition: transform 0.3s; }
   
   .section.collapsed .toggle-icon { transform: rotate(-90deg); }
-  .section.collapsed table, .section.collapsed .empty, .section.collapsed .spending-input-row, .section.collapsed #spendingTableContainer, .section.collapsed #hiddenTableContainer { display: none; }
+  .section.collapsed table, 
+  .section.collapsed .empty, 
+  .section.collapsed .spending-input-row, 
+  .section.collapsed #spendingTableContainer, 
+  .section.collapsed #hiddenTableContainer { display: none !important; }
   
   .new_today h2 { color: #4472C4; }
   .in_progress h2 { color: #7030A0; }
@@ -404,8 +408,25 @@
   }
 
   /* Common Helpers */
+  function getCollapseState(key) {
+    return localStorage.getItem('collapsed_' + key) === 'true';
+  }
+
+  function setCollapseState(key, isCollapsed) {
+    localStorage.setItem('collapsed_' + key, isCollapsed);
+  }
+
   function toggleSection(header) {
-    header.parentElement.classList.toggle('collapsed');
+    const section = header.parentElement;
+    const isCollapsed = section.classList.toggle('collapsed');
+    
+    // Determine a unique key for this section
+    let key = section.id;
+    if (!key) {
+      const classList = section.className.split(' ');
+      key = classList.find(c => c !== 'section') || 'unknown';
+    }
+    setCollapseState(key, isCollapsed);
   }
 
   document.addEventListener('click', function(e) {
@@ -452,7 +473,8 @@
     let html = '';
     for (const s of sections) {
       const items = reportData[s.key];
-      html += `<div class="section ${s.cls}">
+      const isCollapsed = getCollapseState(s.cls);
+      html += `<div class="section ${s.cls} ${isCollapsed ? 'collapsed' : ''}">
         <h2>
           <span class="title">${s.title}</span>
           <span class="count">(${items.length} items)</span>
@@ -555,6 +577,15 @@
   }
 
   function exportExcel() { window.location.href = '/api/export?target_date=' + dateInput.value; }
+
+  // Apply initial collapse states for static sections
+  window.addEventListener('DOMContentLoaded', () => {
+    ['hiddenSection', 'spendingSection'].forEach(id => {
+      if (getCollapseState(id)) {
+        document.getElementById(id).classList.add('collapsed');
+      }
+    });
+  });
 
   loadReport();
 </script>
