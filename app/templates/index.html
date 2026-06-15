@@ -90,6 +90,11 @@
 
 <div id="report"></div>
 
+<div id="hiddenSection" class="section" style="display: none; background: #fafafa; border: 1px solid #eee;">
+  <h2 style="color: #999;">🙈 Hidden Items <span id="hiddenCount" class="count"></span></h2>
+  <div id="hiddenTableContainer"></div>
+</div>
+
 <div id="spendingSection" class="section spending">
   <h2>💸 Daily Spending <span id="spendingCount" class="count"></span></h2>
   <div class="spending-input-row" style="margin-bottom: 20px; background: #fff9f9; padding: 20px; border-radius: 8px; border: 1px dashed #d9534f; display: flex; gap: 15px; align-items: flex-end;">
@@ -160,11 +165,6 @@
       </div>
     </div>
 
-    <div id="hiddenListSection" style="margin-bottom: 25px; padding-top: 20px; border-top: 1px solid #eee;">
-      <label style="display: block; font-size: 14px; font-weight: bold; margin-bottom: 10px;">🙈 Hidden Invoices</label>
-      <div id="hiddenList" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
-    </div>
-
     <div style="text-align: right; margin-top: 30px;">
       <button onclick="closeSettings()" style="background: #6c757d; color: white; padding: 12px 20px; margin-right: 10px;">Cancel</button>
       <button onclick="saveSettings()" style="background: #28a745; color: white; padding: 12px 30px;">Save</button>
@@ -194,6 +194,7 @@
       loadSpending();
       loadVendors();
       loadSettings(); 
+      loadHiddenList();
       
       const now = new Date().toLocaleTimeString();
       document.getElementById('updateStatus').innerText = `Last Updated: ${now} (Auto-refresh 60s)`;
@@ -206,7 +207,7 @@
   }
 
   /* Settings Logic */
-  function openSettings() { document.getElementById('settingsModal').style.display = 'block'; loadHiddenList(); }
+  function openSettings() { document.getElementById('settingsModal').style.display = 'block'; }
   function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
 
   document.getElementById('setAutoEnable').addEventListener('change', function(e) {
@@ -282,24 +283,44 @@
 
   /* Hiding Logic */
   async function hideInvoice(invNum) {
-    if (!confirm(`Hide Invoice #${invNum} permanently?`)) return;
-    try { await fetch(`/api/hide/${invNum}`, { method: 'POST' }); loadReport(); } catch(e) { alert(e.message); }
+    if (!confirm(`Hide Invoice #${invNum} globally? (Manage it on ${dateInput.value})`)) return;
+    try { await fetch(`/api/hide/${invNum}?target_date=${dateInput.value}`, { method: 'POST' }); loadReport(); } catch(e) { alert(e.message); }
   }
 
   async function loadHiddenList() {
     try {
-      const res = await fetch('/api/hidden');
+      const res = await fetch(`/api/hidden?target_date=${dateInput.value}`);
       const list = await res.json();
-      document.getElementById('hiddenList').innerHTML = list.map(inv => `
-        <span style="background:#f0f0f0; padding:4px 8px; border-radius:4px; font-size:12px; border:1px solid #ccc;">
-          #${inv} <button onclick="unhideInvoice('${inv}')" style="background:none; border:none; color:red; cursor:pointer; font-weight:bold;">[Unhide]</button>
-        </span>
-      `).join('') || '<p class="empty">No hidden items</p>';
+      const section = document.getElementById('hiddenSection');
+      const container = document.getElementById('hiddenTableContainer');
+      const countSpan = document.getElementById('hiddenCount');
+      
+      if (list.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+      
+      section.style.display = 'block';
+      countSpan.innerText = `(Items hidden on ${dateInput.value})`;
+      
+      let html = '<table><tr><th>Invoice #</th><th>Account</th><th>Contact</th><th>Job Description</th><th>Amount</th><th>Action</th></tr>';
+      for (const item of list) {
+        html += `<tr>
+          <td>${item.invoicenumber}</td>
+          <td>${item.account_display||'-'}</td>
+          <td>${item.contact_display||''}</td>
+          <td>${item.job_name||'-'}</td>
+          <td>${fmtAmt(item.grandtotal)}</td>
+          <td><button onclick="unhideInvoice('${item.invoicenumber}')" style="background:#eee; border:1px solid #ccc; border-radius:3px; padding:2px 6px; cursor:pointer; color:#d9534f; font-size:11px;">Unhide</button></td>
+        </tr>`;
+      }
+      html += '</table>';
+      container.innerHTML = html;
     } catch(e) { console.error(e); }
   }
 
   async function unhideInvoice(invNum) {
-    try { await fetch(`/api/unhide/${invNum}`, { method: 'POST' }); loadReport(); loadHiddenList(); } catch(e) { alert(e.message); }
+    try { await fetch(`/api/unhide/${invNum}?target_date=${dateInput.value}`, { method: 'POST' }); loadReport(); loadHiddenList(); } catch(e) { alert(e.message); }
   }
 
   /* Spending Logic */

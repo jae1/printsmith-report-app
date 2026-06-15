@@ -1,13 +1,15 @@
 from datetime import date
 import psycopg2.extras
 from app.db.database import get_conn
-from app.services import hide_service
+from app.services import hide_service, settings_service
 
 def get_report_data(target_date=None):
     if target_date is None:
         target_date = date.today()
 
-    hidden_list = hide_service.get_hidden_invoices()
+    hidden_list = hide_service.get_all_hidden_invoices()
+    settings = settings_service.load_settings()
+    excluded_accounts = settings.get("excluded_paid_accounts", [])
 
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -274,6 +276,10 @@ def get_report_data(target_date=None):
         res = []
         target_date_str = str(target_date)
         for inv, d in aggregated.items():
+            # Skip excluded accounts
+            if d.get("account_display") in excluded_accounts:
+                continue
+
             # Check if invoice was finalized (posted) today
             is_finalized_today = False
             if d.get("offpendingdate"):

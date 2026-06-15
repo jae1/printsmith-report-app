@@ -15,6 +15,7 @@ class SettingsUpdate(BaseModel):
     auto_send_enabled: bool
     auto_send_time: str
     report_title_prefix: str
+    excluded_paid_accounts: list[str] = []
 
 @router.get("/settings")
 def get_settings():
@@ -49,17 +50,17 @@ def delete_spending(target_date: str, spending_id: str):
     return {"status": "success"}
 
 @router.get("/hidden")
-def get_hidden():
-    return hide_service.get_hidden_invoices()
+def get_hidden(target_date: str):
+    return hide_service.get_hidden_details(target_date)
 
 @router.post("/hide/{invoice_number}")
-def hide_invoice(invoice_number: str):
-    hide_service.hide_invoice(invoice_number)
+def hide_invoice(invoice_number: str, target_date: str):
+    hide_service.hide_invoice(target_date, invoice_number)
     return {"status": "success"}
 
 @router.post("/unhide/{invoice_number}")
-def unhide_invoice(invoice_number: str):
-    hide_service.unhide_invoice(invoice_number)
+def unhide_invoice(invoice_number: str, target_date: str):
+    hide_service.unhide_invoice(target_date, invoice_number)
     return {"status": "success"}
 
 @router.get("/report/email")

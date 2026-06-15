@@ -8,7 +8,8 @@ DEFAULT_SETTINGS = {
     "auto_send_enabled": False,
     "auto_send_time": "17:00",
     "auto_send_days": [0, 1, 2, 3, 4], # Mon-Fri
-    "report_title_prefix": "Overnight"
+    "report_title_prefix": "Overnight",
+    "excluded_paid_accounts": []
 }
 
 def load_settings():
