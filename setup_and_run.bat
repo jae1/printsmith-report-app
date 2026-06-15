@@ -2,14 +2,18 @@
 :loop
 cls
 echo ======================================================
-echo  PrintSmith Report Server - Auto Update Mode
+echo  PrintSmith Report Server - Force Update Mode
 echo ======================================================
 echo.
-echo [1/2] Checking for latest code from GitHub...
-git pull origin main
+echo [1/2] Syncing with GitHub (Force Update)...
 
+:: Fetch the latest changes
+git fetch origin main
+:: Force reset to match the remote branch (overwrites any local changes)
+git reset --hard origin/main
+
+echo.
 if not exist "venv" (
-    echo.
     echo [*] Creating virtual environment...
     python -m venv venv
 )
