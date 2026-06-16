@@ -775,22 +775,27 @@
           
           let badgeClass = 'bg-mixed';
           if (item.transaction_type === 'PAID') badgeClass = 'bg-paid';
-          else if (item.transaction_type === 'PARTIAL') badgeClass = 'bg-partial';
           else if (item.transaction_type === 'DEPOSIT') badgeClass = 'bg-deposit';
           else if (item.transaction_type === 'AR PAYMENT') badgeClass = 'bg-ar';
 
           let typeBadge = (s.key === 'paid' && item.transaction_type) ? `<span class="badge-type ${badgeClass}">${item.transaction_type}</span>` : '';
+          let partialBadge = item.is_partial ? `<span class="badge-type bg-partial">PARTIAL</span>` : '';
           
           let balInfo = '';
-          if (item.is_partial && item.current_balance > 0) {
-            balInfo = `<span class="badge-bal">BAL DUE: ${fmtAmt(item.current_balance)}</span>`;
+          if (item.is_partial) {
+            // Calculate actual balance to show (if it was a deposit, it's grandtotal - abs(balance))
+            let displayBal = item.current_balance;
+            if (displayBal < 0) displayBal = item.grandtotal - Math.abs(displayBal);
+            if (displayBal > 0.01) {
+                balInfo = `<span class="badge-bal">BAL DUE: ${fmtAmt(displayBal)}</span>`;
+            }
           }
 
           html += `<tr>
             <td>${item.invoicenumber||''}<button class="btn-hide" onclick="hideInvoice('${item.invoicenumber}')">Hide</button></td>
             <td>${item.account_display||'-'}</td>
             <td>${item.contact_display||''}</td>
-            <td>${typeBadge}${item.job_name||''}${balInfo}${item.payment_status === 'PAID' ? '<span class="badge-paid">PAID</span>' : (item.payment_status && item.payment_status.startsWith('BAL DUE') ? `<span class="badge-bal">${item.payment_status}</span>` : '')}</td>
+            <td>${typeBadge}${partialBadge}${item.job_name||''}${balInfo}${item.payment_status === 'PAID' ? '<span class="badge-paid">PAID</span>' : (item.payment_status && item.payment_status.startsWith('BAL DUE') ? `<span class="badge-bal">${item.payment_status}</span>` : '')}</td>
             ${s.showStatus ? `<td>${item.status||'-'}</td>` : ''}
             ${!s.hideOrdered ? `<td>${fmt(item.ordereddate)}</td>` : ''}
             <td>${fmt(item[s.dateCol])}</td>

@@ -325,22 +325,18 @@ def get_report_data(target_date=None):
                 inv_res = cur_detail.fetchone()
                 grand_total = float(inv_res["grandtotal"] or 0) if inv_res else 0
 
-                # Logic refinement:
-                # 1. If balance is 0 (or near 0), it's fully paid.
-                # 2. If it's a deposit (recordtype 7) and balance equals grandtotal, it's a "Full Deposit" (Paid).
-                # 3. Otherwise, if 0 < balance < grandtotal, it's PARTIAL.
+                # Logic refinement for is_partial:
+                # 1. If current_balance is positive (> 0.01), it's a partial payment on a POSTED job.
+                # 2. If current_balance is negative, it's likely a deposit. It's partial if abs(balance) < grandtotal.
                 
                 is_partial = False
-                if abs(current_balance) < 0.01:
-                    is_partial = False
-                    current_balance = 0
-                elif abs(current_balance - grand_total) < 0.01:
-                    # Sum of history equals grandtotal -> This is a full payment/deposit
-                    is_partial = False
-                    current_balance = 0
-                else:
+                if current_balance > 0.01:
                     is_partial = True
-
+                elif current_balance < -0.01:
+                    # Check if this deposit covers the whole invoice
+                    if grand_total > 0.01 and abs(current_balance) < (grand_total - 0.01):
+                        is_partial = True
+                
                 aggregated[inv]["current_balance"] = current_balance
                 aggregated[inv]["is_partial"] = is_partial
 
@@ -367,10 +363,8 @@ def get_report_data(target_date=None):
                 if post_date_str == target_date_str:
                     is_finalized_today = True
 
-            # Transaction Type Label
-            if d.get("is_partial"):
-                d["transaction_type"] = "PARTIAL"
-            elif d.get("is_ar"):
+            # Transaction Type Label (Primary)
+            if d.get("is_ar"):
                 d["transaction_type"] = "AR PAYMENT"
             elif d.get("is_payment") or is_finalized_today:
                 d["transaction_type"] = "PAID"
