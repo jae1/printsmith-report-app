@@ -5,10 +5,15 @@ from app.services.report_service import get_report_data
 from app.services.export_service import generate_report_xlsx
 from app.services.email_service import send_report_email
 from app.core.config import SMTP_CONFIG
-from app.services import hide_service, spending_service, settings_service
+from app.services import hide_service, spending_service, settings_service, expense_parser_service
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api")
+
+@router.post("/spending/sync")
+def sync_spending():
+    count = expense_parser_service.fetch_and_parse_receipts()
+    return {"status": "success", "new_items": count}
 
 class SettingsUpdate(BaseModel):
     boss_emails: list[str]
@@ -47,6 +52,14 @@ def add_spending(target_date: str, item: SpendingCreate):
 @router.delete("/spending/{target_date}/{spending_id}")
 def delete_spending(target_date: str, spending_id: str):
     spending_service.delete_spending(target_date, spending_id)
+    return {"status": "success"}
+
+class SpendingUpdate(BaseModel):
+    vendor: str
+
+@router.put("/spending/{target_date}/{spending_id}")
+def update_spending(target_date: str, spending_id: str, update: SpendingUpdate):
+    spending_service.update_spending(target_date, spending_id, update.vendor)
     return {"status": "success"}
 
 @router.get("/hidden")

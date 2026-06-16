@@ -42,6 +42,16 @@ def delete_spending(target_date, spending_id):
         data[date_str] = [s for s in data[date_str] if s["id"] != spending_id]
         _save_spending(data)
 
+def update_spending(target_date, spending_id, vendor):
+    data = _load_spending()
+    date_str = str(target_date)
+    if date_str in data:
+        for s in data[date_str]:
+            if s["id"] == spending_id:
+                s["vendor"] = vendor
+                break
+        _save_spending(data)
+
 def get_unique_vendors():
     data = _load_spending()
     vendors = set()
