@@ -4,7 +4,9 @@ from email.header import decode_header
 import re
 import json
 import os
+import io
 from datetime import datetime
+from pypdf import PdfReader
 from app.core.config import SMTP_CONFIG
 from app.services import spending_service
 
@@ -32,9 +34,12 @@ def clean_html(html_content):
     return " ".join(text.split())
 
 def extract_amount(text):
-    # Look for common patterns like "Order Total: $12.34" or "Total: $12.34"
+    if not text:
+        return None
+    # Look for common patterns including invoice-specific ones
     patterns = [
-        r"(?:Order Total|Total|Grand Total|Amount Paid)[:\s]*\$?\s*([\d,]+\.\d{2})",
+        r"(?:Order Total|Total|Grand Total|Amount Paid|TOTAL DUE|Invoice Total)[:\s]*\$?\s*([\d,]+\.\d{2})",
+        r"Total\s*Amount\s*[:\s]*\$?\s*([\d,]+\.\d{2})",
         r"\$\s*([\d,]+\.\d{2})"
     ]
     for pattern in patterns:
@@ -42,6 +47,17 @@ def extract_amount(text):
         if match:
             return float(match.group(1).replace(",", ""))
     return None
+
+def extract_text_from_pdf(pdf_bytes):
+    try:
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
+        return text
+    except Exception as e:
+        print(f"Error parsing PDF: {e}")
+        return ""
 
 def fetch_and_parse_receipts():
     user = SMTP_CONFIG["user"]
@@ -59,7 +75,7 @@ def fetch_and_parse_receipts():
         # Search for common receipt keywords received TODAY
         today_imap = datetime.now().strftime("%d-%b-%Y")
         # IMAP SINCE search is "on or after". Combining with keywords.
-        search_query = f'SINCE {today_imap} (OR (FROM "amazon.com") (FROM "kellyspicers.com") (FROM "grimco.com") (SUBJECT "Order Confirmation") (SUBJECT "Receipt"))'
+        search_query = f'SINCE {today_imap} (OR (OR (OR (FROM "amazon.com") (FROM "kellyspicers.com")) (FROM "grimco.com")) (OR (SUBJECT "Order Confirmation") (SUBJECT "Receipt")))'
         status, messages = mail.search(None, search_query)
 
         if status != "OK":
@@ -87,9 +103,13 @@ def fetch_and_parse_receipts():
             msg = email.message_from_bytes(raw_email)
             
             # Extract Subject
-            subject = decode_header(msg["Subject"])[0][0]
-            if isinstance(subject, bytes):
-                subject = subject.decode()
+            subject_parts = decode_header(msg["Subject"])
+            subject = ""
+            for part, encoding in subject_parts:
+                if isinstance(part, bytes):
+                    subject += part.decode(encoding or "utf-8", errors="ignore")
+                else:
+                    subject += str(part)
             
             # Extract Date
             date_tuple = email.utils.parsedate_tz(msg["Date"])
@@ -98,18 +118,29 @@ def fetch_and_parse_receipts():
             else:
                 msg_date = datetime.now().date()
 
-            # Extract Body
+            # Extract Body and PDF Attachments
             body = ""
+            pdf_texts = []
             if msg.is_multipart():
                 for part in msg.walk():
-                    if part.get_content_type() == "text/plain":
+                    content_type = part.get_content_type()
+                    content_disposition = str(part.get("Content-Disposition"))
+                    
+                    if content_type == "text/plain":
                         body += part.get_payload(decode=True).decode(errors='ignore')
-                    elif part.get_content_type() == "text/html":
+                    elif content_type == "text/html":
                         body += clean_html(part.get_payload(decode=True).decode(errors='ignore'))
+                    elif content_type == "application/pdf" or (".pdf" in content_disposition.lower()):
+                        pdf_data = part.get_payload(decode=True)
+                        if pdf_data:
+                            pdf_texts.append(extract_text_from_pdf(pdf_data))
             else:
                 body = msg.get_payload(decode=True).decode(errors='ignore')
                 if msg.get_content_type() == "text/html":
                     body = clean_html(body)
+
+            # Combine all text to search for the amount
+            full_search_text = body + "\n" + "\n".join(pdf_texts)
 
             # Determine Vendor
             from_header = msg.get("From", "").lower()
@@ -125,7 +156,7 @@ def fetch_and_parse_receipts():
             elif "grimco" in from_header:
                 vendor = "Grimco"
             
-            amount = extract_amount(body)
+            amount = extract_amount(full_search_text)
             if amount:
                 spending_service.add_spending(
                     target_date=msg_date,
