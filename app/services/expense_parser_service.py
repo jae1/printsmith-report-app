@@ -73,6 +73,45 @@ def extract_text_from_pdf(pdf_bytes):
         print(f"Error parsing PDF: {e}")
         return ""
 
+def summarize_items(text, vendor):
+    """
+    Attempt to extract a brief summary of what was purchased.
+    """
+    text_lower = text.lower()
+    
+    # Kelly Paper specific
+    if vendor == "Kelly Paper":
+        if "lamination" in text_lower or "pouch" in text_lower:
+            return "Lamination Pouches"
+        if "paper" in text_lower or "bond" in text_lower or "cover" in text_lower:
+            return "Paper Stock"
+        if "ink" in text_lower or "toner" in text_lower:
+            return "Ink/Toner"
+
+    # USPS specific
+    if vendor == "USPS":
+        if "click-n-ship" in text_lower or "shipping label" in text_lower:
+            return "Shipping Label"
+        return "Postage/Shipping"
+
+    # Amazon specific
+    if vendor == "Amazon":
+        items = []
+        if "ink" in text_lower: items.append("Ink")
+        if "paper" in text_lower: items.append("Paper")
+        if "label" in text_lower: items.append("Labels")
+        if "tape" in text_lower: items.append("Tape")
+        if items: return f"Office Supplies: {', '.join(items)}"
+        return "Amazon Purchase"
+
+    # Grimco
+    if vendor == "Grimco":
+        if "vinyl" in text_lower: return "Vinyl Materials"
+        if "ink" in text_lower: return "Large Format Ink"
+        return "Sign Supplies"
+
+    return "General Supplies"
+
 def fetch_and_parse_receipts():
     user = SMTP_CONFIG["user"]
     password = SMTP_CONFIG["password"]
@@ -92,7 +131,8 @@ def fetch_and_parse_receipts():
         mail.select("inbox")
 
         today_imap = datetime.now().strftime("%d-%b-%Y")
-        search_query = f'SINCE {today_imap} (OR (OR (OR (FROM "amazon.com") (FROM "kellyspicers.com")) (FROM "grimco.com")) (OR (SUBJECT "Order Confirmation") (SUBJECT "Receipt")))'
+        # Added usps.com and Payment Confirmation to keywords
+        search_query = f'SINCE {today_imap} (OR (OR (OR (OR (FROM "amazon.com") (FROM "kellyspicers.com")) (FROM "grimco.com")) (FROM "usps.com")) (OR (OR (SUBJECT "Order Confirmation") (SUBJECT "Receipt")) (SUBJECT "Payment Confirmation")))'
         status, messages = mail.search(None, search_query)
 
         if status != "OK" or not messages[0]:
@@ -172,14 +212,19 @@ def fetch_and_parse_receipts():
             elif "uline" in from_header: vendor = "Uline"
             elif "kellyspicers" in from_header or "kelly paper" in from_header.lower(): vendor = "Kelly Paper"
             elif "grimco" in from_header: vendor = "Grimco"
+            elif "usps.com" in from_header: vendor = "USPS"
             
             amount = extract_amount(full_search_text)
             if amount:
-                print(f"DEBUG: Successfully extracted ${amount} for {vendor}")
+                # Generate a better description
+                item_summary = summarize_items(full_search_text, vendor)
+                detailed_desc = f"{item_summary} ({subject})"
+                
+                print(f"DEBUG: Successfully extracted ${amount} for {vendor} - {item_summary}")
                 spending_service.add_spending(
                     target_date=msg_date,
                     vendor=vendor,
-                    description=f"Auto-extracted: {subject}",
+                    description=detailed_desc,
                     amount=amount,
                     source_id=gmail_msg_id
                 )
