@@ -772,10 +772,17 @@
         let sectionTotal = 0;
         for (const item of items) {
           sectionTotal += parseFloat(item.grandtotal || 0);
-          let typeBadge = (s.key === 'paid' && item.transaction_type) ? `<span class="badge-type ${item.transaction_type === 'PAID' ? 'bg-paid' : (item.transaction_type === 'PARTIAL' ? 'bg-partial' : (item.transaction_type === 'DEPOSIT' ? 'bg-deposit' : 'bg-mixed'))}">${item.transaction_type}</span>` : '';
+          
+          let badgeClass = 'bg-mixed';
+          if (item.transaction_type === 'PAID') badgeClass = 'bg-paid';
+          else if (item.transaction_type === 'PARTIAL') badgeClass = 'bg-partial';
+          else if (item.transaction_type === 'DEPOSIT') badgeClass = 'bg-deposit';
+          else if (item.transaction_type === 'AR PAYMENT') badgeClass = 'bg-ar';
+
+          let typeBadge = (s.key === 'paid' && item.transaction_type) ? `<span class="badge-type ${badgeClass}">${item.transaction_type}</span>` : '';
           
           let balInfo = '';
-          if (item.transaction_type === 'PARTIAL' && item.current_balance > 0) {
+          if (item.is_partial && item.current_balance > 0) {
             balInfo = `<span class="badge-bal">BAL DUE: ${fmtAmt(item.current_balance)}</span>`;
           }
 

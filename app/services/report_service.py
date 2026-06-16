@@ -368,10 +368,10 @@ def get_report_data(target_date=None):
                     is_finalized_today = True
 
             # Transaction Type Label
-            if d.get("is_ar"):
-                d["transaction_type"] = "AR PAYMENT"
-            elif d.get("is_partial"):
+            if d.get("is_partial"):
                 d["transaction_type"] = "PARTIAL"
+            elif d.get("is_ar"):
+                d["transaction_type"] = "AR PAYMENT"
             elif d.get("is_payment") or is_finalized_today:
                 d["transaction_type"] = "PAID"
             elif d.get("is_deposit"):
