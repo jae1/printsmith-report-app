@@ -516,16 +516,18 @@
     const vendor = document.getElementById('spendVendor').value;
     const description = document.getElementById('spendDesc').value;
     const amount = document.getElementById('spendAmount').value;
+    const card = document.getElementById('spendCard').value;
     if (!vendor || !amount) { alert('Enter vendor and amount'); return; }
     try {
       await fetch(`/api/spending?target_date=${dateInput.value}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vendor, description, amount: parseFloat(amount) })
+        body: JSON.stringify({ vendor, description, amount: parseFloat(amount), card })
       });
       document.getElementById('spendVendor').value = '';
       document.getElementById('spendDesc').value = '';
       document.getElementById('spendAmount').value = '';
+      document.getElementById('spendCard').value = '';
       loadSpending();
       loadVendors();
     } catch(e) { alert('Failed'); }
@@ -630,6 +632,7 @@
         <tr>
           <th>Vendor</th>
           <th>Description</th>
+          <th style="width:100px;">Card</th>
           <th style="width:120px; text-align:right;">Amount</th>
           <th style="width:100px;"></th>
         </tr>`;
@@ -642,6 +645,7 @@
           html += `<tr class="spend-row editing" data-id="${s.id}">
             <td><input type="text" class="edit-input edit-vendor" value="${s.vendor.replace(/"/g, '&quot;')}" onkeydown="handleEditKey(event, '${s.id}')"></td>
             <td><input type="text" class="edit-input edit-desc" value="${s.description.replace(/"/g, '&quot;')}" onkeydown="handleEditKey(event, '${s.id}')"></td>
+            <td><input type="text" class="edit-input edit-card" value="${(s.card||'').replace(/"/g, '&quot;')}" onkeydown="handleEditKey(event, '${s.id}')"></td>
             <td><input type="text" class="edit-input edit-amt" value="${s.amount.toFixed(2)}" style="text-align:right;" onkeydown="handleEditKey(event, '${s.id}')"></td>
             <td style="text-align:right;">
               <div style="display:flex; gap:5px; justify-content:flex-end;">
@@ -658,6 +662,7 @@
           html += `<tr class="spend-row" data-id="${s.id}">
             <td>${s.vendor}</td>
             <td>${s.description}</td>
+            <td>${s.card || '-'}</td>
             <td style="text-align:right;">${fmtAmt(s.amount)}</td>
             <td style="text-align:right;">
               <div class="actions">
@@ -672,7 +677,7 @@
           </tr>`;
         }
       }
-      html += `<tr style="font-weight:bold; background:#fff9f9;"><td colspan="2" style="text-align:right; padding:8px;">Total Spending</td><td style="padding:8px; text-align:right;">${fmtAmt(total)}</td><td></td></tr></table>`;
+      html += `<tr style="font-weight:bold; background:#fff9f9;"><td colspan="3" style="text-align:right; padding:8px;">Total Spending</td><td style="padding:8px; text-align:right;">${fmtAmt(total)}</td><td></td></tr></table>`;
     }
     document.getElementById('spendingTableContainer').innerHTML = html;
   }
