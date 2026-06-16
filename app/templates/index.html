@@ -166,6 +166,7 @@
   <button class="btn-load" onclick="loadReport()">Load Report</button>
   <button class="btn-export" onclick="exportExcel()">Export Excel</button>
   <button class="btn-email" onclick="sendEmail()">Email to Boss</button>
+  <button id="btnBatchHide" class="btn-hide-selected" onclick="hideSelectedInvoices()" style="display:none; background: #6c757d; color: white;">Hide Selected (<span id="selectedCount">0</span>)</button>
   <button class="btn-settings" onclick="openSettings()">⚙️ Settings</button>
   <span id="updateStatus" style="font-size: 12px; color: #666; margin-left: 10px;"></span>
 </div>
@@ -736,6 +737,46 @@
     return (sortConfig.section === sectionKey && sortConfig.key === columnKey) ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : '';
   }
 
+  function updateSelectedCount() {
+    const checked = document.querySelectorAll('.inv-chk:checked');
+    const count = checked.length;
+    const btn = document.getElementById('btnBatchHide');
+    const span = document.getElementById('selectedCount');
+    
+    if (count > 0) {
+      btn.style.display = 'inline-block';
+      span.innerText = count;
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+
+  function toggleAll(sectionKey, checked) {
+    const checkboxes = document.querySelectorAll(`.chk-${sectionKey}`);
+    checkboxes.forEach(chk => chk.checked = checked);
+    updateSelectedCount();
+  }
+
+  async function hideSelectedInvoices() {
+    const checked = document.querySelectorAll('.inv-chk:checked');
+    const invNums = Array.from(checked).map(chk => chk.value);
+    
+    if (invNums.length === 0) return;
+    if (!confirm(`Hide ${invNums.length} selected invoices?`)) return;
+    
+    try {
+      await fetch('/api/hide-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          invoice_numbers: invNums,
+          target_date: dateInput.value 
+        })
+      });
+      loadReport();
+    } catch(e) { alert('Batch hide failed'); }
+  }
+
   function renderReport() {
     if (!reportData) return;
     const sections = [
@@ -759,6 +800,7 @@
       if (items.length === 0) { html += '<p class="empty">None</p>'; } 
       else {
         html += `<table><tr>
+            <th style="width:30px;"><input type="checkbox" onclick="toggleAll('${s.key}', this.checked)"></th>
             <th onclick="handleSort('${s.key}', 'invoicenumber')">Invoice #${getSortIcon(s.key, 'invoicenumber')}</th>
             <th onclick="handleSort('${s.key}', 'account_display')">Account${getSortIcon(s.key, 'account_display')}</th>
             <th onclick="handleSort('${s.key}', 'contact_display')">Contact${getSortIcon(s.key, 'contact_display')}</th>
@@ -792,6 +834,7 @@
           }
 
           html += `<tr>
+            <td><input type="checkbox" class="inv-chk chk-${s.key}" value="${item.invoicenumber}" onchange="updateSelectedCount()"></td>
             <td>${item.invoicenumber||''}<button class="btn-hide" onclick="hideInvoice('${item.invoicenumber}')">Hide</button></td>
             <td>${item.account_display||'-'}</td>
             <td>${item.contact_display||''}</td>
@@ -803,7 +846,7 @@
             <td>${fmtAmt(item.grandtotal)}</td>
           </tr>`;
         }
-        html += `<tr style="font-weight:bold; background:#f9f9f9;"><td colspan="${(s.showStatus?1:0)+(!s.hideOrdered?1:0)+(s.showMethod?1:0)+5}" style="text-align:right; padding:8px;">Total</td><td style="padding:8px;">${fmtAmt(sectionTotal)}</td></tr></table>`;
+        html += `<tr style="font-weight:bold; background:#f9f9f9;"><td colspan="${(s.showStatus?1:0)+(!s.hideOrdered?1:0)+(s.showMethod?1:0)+6}" style="text-align:right; padding:8px;">Total</td><td style="padding:8px;">${fmtAmt(sectionTotal)}</td></tr></table>`;
       }
       html += '</div>';
     }

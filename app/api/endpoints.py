@@ -78,6 +78,16 @@ def hide_invoice(invoice_number: str, target_date: str):
     hide_service.hide_invoice(target_date, invoice_number)
     return {"status": "success"}
 
+class BatchHide(BaseModel):
+    invoice_numbers: list[str]
+    target_date: str
+
+@router.post("/hide-batch")
+def hide_batch(data: BatchHide):
+    for inv in data.invoice_numbers:
+        hide_service.hide_invoice(data.target_date, inv)
+    return {"status": "success"}
+
 @router.post("/unhide/{invoice_number}")
 def unhide_invoice(invoice_number: str, target_date: str):
     hide_service.unhide_invoice(target_date, invoice_number)
