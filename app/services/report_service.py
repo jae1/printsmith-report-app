@@ -14,12 +14,12 @@ def get_report_data(target_date=None):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     # Fetch hidden invoices for the target date
-    hidden_list = hide_service.get_hidden_invoices(target_date)
+    hidden_list = hide_service.get_hidden_invoices_by_date(target_date)
 
     # 1. New Today (Invoices created today)
     cur.execute("""
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
-               ib.status, ib.amountpaid as amount_paid,
+               ib.status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
                TRIM(a.title) as account_name
         FROM invoicebase ib
@@ -35,7 +35,7 @@ def get_report_data(target_date=None):
     # Production status filter (e.g., 1153 is 'In Production')
     cur.execute("""
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
-               ib.status, ib.amountpaid as amount_paid,
+               ib.status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
                TRIM(a.title) as account_name
         FROM invoicebase ib
@@ -53,7 +53,7 @@ def get_report_data(target_date=None):
     # 3. Ready for Pickup
     cur.execute("""
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
-               ib.status, ib.amountpaid as amount_paid,
+               ib.status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
                TRIM(a.title) as account_name
         FROM invoicebase ib
@@ -72,7 +72,7 @@ def get_report_data(target_date=None):
     cur.execute("""
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
                ib.offpendingdate, ib.pickupdate, ib.locationchangedate,
-               ib.status, ib.amountpaid as amount_paid,
+               ib.status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
                TRIM(a.title) as account_name
         FROM invoicebase ib
