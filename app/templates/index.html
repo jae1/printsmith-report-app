@@ -112,14 +112,46 @@
   .autocomplete-item:last-child { border-bottom: none; }
 
   /* Spending Row Styles */
-  .spend-row .actions { opacity: 0; transition: opacity 0.2s; white-space: nowrap; }
+  .spend-row .actions { opacity: 0; transition: all 0.2s ease; white-space: nowrap; display: flex; justify-content: flex-end; gap: 8px; }
   .spend-row:hover .actions { opacity: 1; }
-  .btn-action { background: none; border: 1px solid #ddd; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; color: #666; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; margin-left: 5px; }
-  .btn-action:hover { background: #f0f0f0; color: #333; border-color: #bbb; }
-  .btn-action.btn-edit-confirm { background: #28a745; color: white; border: none; }
-  .btn-action.btn-edit-confirm:hover { background: #218838; }
+  .btn-action { 
+    background: white; 
+    border: 1px solid #e0e0e0; 
+    border-radius: 6px; 
+    width: 32px; 
+    height: 32px; 
+    cursor: pointer; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    transition: all 0.2s;
+    padding: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .btn-action svg { width: 16px; height: 16px; display: block; }
   
-  .edit-input { width: 100%; padding: 6px; border: 1px solid #007bff; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
+  .btn-edit { color: #4472C4; }
+  .btn-edit:hover { background: #e7f1ff; border-color: #4472C4; transform: translateY(-1px); }
+  
+  .btn-delete { color: #d9534f; }
+  .btn-delete:hover { background: #fff5f5; border-color: #d9534f; transform: translateY(-1px); }
+  
+  .btn-save { background: #28a745; color: white; border: none; }
+  .btn-save:hover { background: #218838; transform: scale(1.05); }
+  
+  .btn-cancel { background: #6c757d; color: white; border: none; }
+  .btn-cancel:hover { background: #5a6268; transform: scale(1.05); }
+  
+  .edit-input { 
+    width: 100%; 
+    padding: 8px 10px; 
+    border: 2px solid #4472C4; 
+    border-radius: 6px; 
+    box-sizing: border-box; 
+    font-size: 13px; 
+    outline: none;
+    box-shadow: 0 2px 8px rgba(68,114,196,0.15);
+  }
 </style>
 </head>
 <body>
@@ -472,6 +504,14 @@
     } catch(e) { alert('Save failed'); }
   }
 
+  function handleEditKey(event, id) {
+    if (event.key === 'Enter') {
+      saveEditRow(id);
+    } else if (event.key === 'Escape') {
+      cancelEditRow();
+    }
+  }
+
   async function addSpending() {
     const vendor = document.getElementById('spendVendor').value;
     const description = document.getElementById('spendDesc').value;
@@ -600,12 +640,18 @@
         
         if (isEditing) {
           html += `<tr class="spend-row editing" data-id="${s.id}">
-            <td><input type="text" class="edit-input edit-vendor" value="${s.vendor.replace(/"/g, '&quot;')}"></td>
-            <td><input type="text" class="edit-input edit-desc" value="${s.description.replace(/"/g, '&quot;')}"></td>
-            <td><input type="text" class="edit-input edit-amt" value="${s.amount.toFixed(2)}" style="text-align:right;"></td>
+            <td><input type="text" class="edit-input edit-vendor" value="${s.vendor.replace(/"/g, '&quot;')}" onkeydown="handleEditKey(event, '${s.id}')"></td>
+            <td><input type="text" class="edit-input edit-desc" value="${s.description.replace(/"/g, '&quot;')}" onkeydown="handleEditKey(event, '${s.id}')"></td>
+            <td><input type="text" class="edit-input edit-amt" value="${s.amount.toFixed(2)}" style="text-align:right;" onkeydown="handleEditKey(event, '${s.id}')"></td>
             <td style="text-align:right;">
-              <button class="btn-action btn-edit-confirm" onclick="saveEditRow('${s.id}')" title="Save">✓</button>
-              <button class="btn-action" onclick="cancelEditRow()" title="Cancel">✕</button>
+              <div style="display:flex; gap:5px; justify-content:flex-end;">
+                <button class="btn-action btn-save" onclick="saveEditRow('${s.id}')" title="Save">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                </button>
+                <button class="btn-action btn-cancel" onclick="cancelEditRow()" title="Cancel">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
             </td>
           </tr>`;
         } else {
@@ -615,8 +661,12 @@
             <td style="text-align:right;">${fmtAmt(s.amount)}</td>
             <td style="text-align:right;">
               <div class="actions">
-                <button class="btn-action" onclick="startEditRow('${s.id}')" title="Edit">✎</button>
-                <button class="btn-action" onclick="deleteSpending('${s.id}')" style="color:#d9534f;" title="Delete">✖</button>
+                <button class="btn-action btn-edit" onclick="startEditRow('${s.id}')" title="Edit">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                </button>
+                <button class="btn-action btn-delete" onclick="deleteSpending('${s.id}')" title="Delete">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
               </div>
             </td>
           </tr>`;
