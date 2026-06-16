@@ -114,13 +114,19 @@ def get_report_data(target_date=None):
     picked_up = cur.fetchall()
 
     # 5. Paid Today (Aggregate direct payments + Parse consolidated AR payments)
+    # We look for:
+    # a) All payment/deposit records (type 2, 7) from today
+    # b) All jobs posted today (type 1) that were not 'Charge' - this helps split batch payments
     cur.execute(f"""
         SELECT 
             ah.invoicenumber, 
             ah.name as record_name,
             ah.recordtype,
             COALESCE(ah.finalpaypaymethod, ah.partialpaypaymethod, tdr.paymode) as pay_method,
-            ABS(ah.total) as transaction_amount,
+            CASE 
+                WHEN ah.recordtype = '1' THEN ah.total 
+                ELSE ABS(ah.total) 
+            END as transaction_amount,
             ib.name as job_name, 
             ib.ordereddate,
             ib.wanteddate,
@@ -130,7 +136,8 @@ def get_report_data(target_date=None):
             TRIM(a.title) as account_name,
             -- Indicators for aggregation
             CASE WHEN ah.recordtype = '7' THEN 1 ELSE 0 END as is_deposit,
-            CASE WHEN ah.recordtype = '2' THEN 1 ELSE 0 END as is_payment
+            CASE WHEN ah.recordtype = '2' THEN 1 ELSE 0 END as is_payment,
+            CASE WHEN ah.recordtype = '1' THEN 1 ELSE 0 END as is_job_posted
         FROM accounthistorydata ah
         LEFT JOIN tapedepositrecord tdr ON ah.invoicenumber = tdr.invoicenumber AND ah.recordtype = '7'
         LEFT JOIN invoicebase ib ON ah.invoicenumber = ib.invoicenumber AND ib.isdeleted = false AND ib.voided = false
@@ -138,10 +145,10 @@ def get_report_data(target_date=None):
         LEFT JOIN party p_con ON c.id = p_con.id
         LEFT JOIN account a ON ib.account_id = a.id
         WHERE ah.isdeleted = false
-        AND ah.recordtype IN ('2', '7')
+        AND ah.recordtype IN ('1', '2', '7')
         AND COALESCE(ah.finalpaypaymethod, ah.partialpaypaymethod, tdr.paymode, '') != 'Charge'
         AND DATE(ah.posteddate) = %s
-        ORDER BY ah.posteddate DESC
+        ORDER BY ah.posteddate DESC, ah.recordtype DESC
     """, (target_date,))
     raw_paid = cur.fetchall()
 
@@ -182,13 +189,43 @@ def get_report_data(target_date=None):
     import re
     def process_paid_rows(rows):
         aggregated = {}
+        handled_by_type1 = set()
         
-        # Connection for detail lookup if needed
+        # 1. First pass: Identify all jobs posted (finalized) today that were paid
+        for r in rows:
+            if r.get("is_job_posted") and r.get("invoicenumber"):
+                inv = str(r["invoicenumber"])
+                if inv in hidden_list: continue
+                
+                handled_by_type1.add(inv)
+                
+                if inv not in aggregated:
+                    aggregated[inv] = {
+                        "invoicenumber": inv,
+                        "job_name": r.get("job_name") or "Job Posted Today",
+                        "ordereddate": r.get("ordereddate"),
+                        "wanteddate": r.get("wanteddate"),
+                        "offpendingdate": r.get("offpendingdate"),
+                        "grandtotal": 0,
+                        "account_display": (r.get("account_name") or r.get("contact_name") or "").strip() or "-",
+                        "contact_display": r.get("contact_name") if r.get("account_name") else "",
+                        "is_deposit": 0,
+                        "is_payment": 1,
+                        "is_ar": False,
+                        "pay_methods": set()
+                    }
+                aggregated[inv]["grandtotal"] += float(r["transaction_amount"] or 0)
+                if r.get("pay_method"):
+                    aggregated[inv]["pay_methods"].add(r["pay_method"])
+
+        # 2. Second pass: Handle AR payments and deposits, avoiding double counting
         conn_detail = get_conn()
         cur_detail = conn_detail.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         for r in rows:
-            # 1. Extract Invoice Numbers
+            if r.get("is_job_posted"): continue # Already handled
+            
+            # Extract Invoice Numbers
             inv_nums = []
             is_generic_ar = False
             if r.get("invoicenumber"):
@@ -200,64 +237,50 @@ def get_report_data(target_date=None):
                     inv_nums = [n.strip() for n in match.group(1).split(",")]
                     is_generic_ar = True
             
-            if not inv_nums:
-                continue
+            if not inv_nums: continue
 
             pay_method = (r.get("pay_method") or "N/A").strip()
 
             for inv in inv_nums:
                 if inv in hidden_list: continue
                 
-                if inv not in aggregated:
-                    # If this was a generic AR payment, we might need to fetch job/account details for each inv
-                    job_name = r.get("job_name")
-                    acc_disp = (r.get("account_name") or r.get("contact_name") or "").strip()
-                    con_disp = r.get("contact_name") if r.get("account_name") else ""
-                    
-                    inv_actual_total = 0
-                    if not job_name or not acc_disp:
-                        # Fetch details for this specific invoice
-                        cur_detail.execute(f"""
-                            SELECT ib.name, ib.ordereddate, ib.wanteddate, ib.offpendingdate,
-                                   ib.grandtotal,
-                                   TRIM(a.title) as account_name, 
-                                   TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name
-                            FROM invoicebase ib
-                            LEFT JOIN account a ON ib.account_id = a.id
-                            LEFT JOIN contact c ON ib.contact_id = c.id
-                            LEFT JOIN party p ON c.id = p.id
-                            WHERE ib.invoicenumber = %s AND ib.isdeleted = false
-                            LIMIT 1
-                        """, (inv,))
-                        det = cur_detail.fetchone()
-                        if det:
-                            job_name = det["name"]
-                            ordered_date = det["ordereddate"]
-                            wanted_date = det["wanteddate"]
-                            offpending_date = det["offpendingdate"]
-                            acc_disp = det["account_name"] or det["contact_name"]
-                            con_disp = det["contact_name"] if det["account_name"] else ""
-                            inv_actual_total = float(det["grandtotal"] or 0)
-                        else:
-                            ordered_date = r.get("ordereddate")
-                            wanted_date = r.get("wanteddate")
-                            offpending_date = r.get("offpendingdate")
-                    else:
-                        ordered_date = r.get("ordereddate")
-                        wanted_date = r.get("wanteddate")
-                        offpending_date = r.get("offpendingdate")
-                        inv_actual_total = float(r.get("grandtotal") or 0)
+                # IMPORTANT: If this invoice was already handled as a 'job posted today', 
+                # we only update the pay method, not the amount (to avoid double counting).
+                if inv in handled_by_type1:
+                    if pay_method != "N/A":
+                        aggregated[inv]["pay_methods"].add(pay_method)
+                    continue
 
+                # Handle AR payment or Deposit on an existing job
+                if inv not in aggregated:
+                    # Fetch details for this specific invoice
+                    cur_detail.execute(f"""
+                        SELECT ib.name, ib.ordereddate, ib.wanteddate, ib.offpendingdate,
+                               ib.grandtotal,
+                               TRIM(a.title) as account_name, 
+                               TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name
+                        FROM invoicebase ib
+                        LEFT JOIN account a ON ib.account_id = a.id
+                        LEFT JOIN contact c ON ib.contact_id = c.id
+                        LEFT JOIN party p ON c.id = p.id
+                        WHERE ib.invoicenumber = %s AND ib.isdeleted = false
+                        LIMIT 1
+                    """, (inv,))
+                    det = cur_detail.fetchone()
+                    
+                    job_name = det["name"] if det else (r.get("job_name") or "Linked AR Invoice")
+                    acc_disp = (det["account_name"] or det["contact_name"]) if det else (r.get("account_name") or r.get("contact_name") or "-")
+                    con_disp = (det["contact_name"] if det["account_name"] else "") if det else (r.get("contact_name") if r.get("account_name") else "")
+                    
                     aggregated[inv] = {
                         "invoicenumber": inv,
-                        "job_name": job_name or "Linked AR Invoice",
-                        "ordereddate": ordered_date,
-                        "wanteddate": wanted_date,
-                        "offpendingdate": offpending_date,
+                        "job_name": job_name,
+                        "ordereddate": det["ordereddate"] if det else r.get("ordereddate"),
+                        "wanteddate": det["wanteddate"] if det else r.get("wanteddate"),
+                        "offpendingdate": det["offpendingdate"] if det else r.get("offpendingdate"),
                         "grandtotal": 0,
-                        "invoice_total": inv_actual_total,
-                        "account_display": acc_disp or "-",
-                        "contact_display": con_disp or "",
+                        "account_display": acc_disp.strip(),
+                        "contact_display": con_disp.strip(),
                         "is_deposit": 0,
                         "is_payment": 0,
                         "is_ar": is_generic_ar,
@@ -266,13 +289,14 @@ def get_report_data(target_date=None):
                 
                 aggregated[inv]["pay_methods"].add(pay_method)
 
-                if r.get("invoicenumber"): # Direct payment
+                if r.get("invoicenumber"): # Direct payment record
                     aggregated[inv]["grandtotal"] += float(r["transaction_amount"] or 0)
-                else: # Consolidated AR payment
+                else: # Consolidated AR payment - use the invoice total as PrintSmith doesn't break it down
                     if aggregated[inv]["grandtotal"] == 0:
-                        # For consolidated AR payments, we use the invoice's own total
-                        # as PrintSmith doesn't break down the batch payment in the history record
-                        aggregated[inv]["grandtotal"] = aggregated[inv].get("invoice_total", 0)
+                        cur_detail.execute("SELECT grandtotal FROM invoicebase WHERE invoicenumber = %s", (inv,))
+                        det = cur_detail.fetchone()
+                        if det:
+                            aggregated[inv]["grandtotal"] = float(det["grandtotal"] or 0)
                 
                 aggregated[inv]["is_deposit"] = max(aggregated[inv]["is_deposit"], r["is_deposit"])
                 aggregated[inv]["is_payment"] = max(aggregated[inv]["is_payment"], r["is_payment"])
@@ -310,7 +334,8 @@ def get_report_data(target_date=None):
             else:
                 d["transaction_type"] = "PAID"
             
-            d["pay_method_display"] = ", ".join(sorted(list(d["pay_methods"])))
+            d["pay_method_display"] = ", ".join(sorted([m for m in d["pay_methods"] if m and m != "N/A"]))
+            if not d["pay_method_display"]: d["pay_method_display"] = "N/A"
             res.append(d)
         
         return sorted(res, key=lambda x: x["invoicenumber"], reverse=True)
