@@ -166,7 +166,6 @@
   <button class="btn-load" onclick="loadReport()">Load Report</button>
   <button class="btn-export" onclick="exportExcel()">Export Excel</button>
   <button class="btn-email" onclick="sendEmail()">Email to Boss</button>
-  <button id="btnBatchHide" class="btn-hide-selected" onclick="hideSelectedInvoices()" style="display:none; background: #6c757d; color: white;">Hide Selected (<span id="selectedCount">0</span>)</button>
   <button class="btn-settings" onclick="openSettings()">⚙️ Settings</button>
   <span id="updateStatus" style="font-size: 12px; color: #666; margin-left: 10px;"></span>
 </div>
@@ -737,11 +736,11 @@
     return (sortConfig.section === sectionKey && sortConfig.key === columnKey) ? (sortConfig.direction === 'asc' ? ' ▲' : ' ▼') : '';
   }
 
-  function updateSelectedCount() {
-    const checked = document.querySelectorAll('.inv-chk:checked');
+  function updateSelectedCount(sectionKey) {
+    const checked = document.querySelectorAll(`.chk-${sectionKey}:checked`);
     const count = checked.length;
-    const btn = document.getElementById('btnBatchHide');
-    const span = document.getElementById('selectedCount');
+    const btn = document.getElementById(`btnHide-${sectionKey}`);
+    const span = document.getElementById(`selCount-${sectionKey}`);
     
     if (count > 0) {
       btn.style.display = 'inline-block';
@@ -754,15 +753,15 @@
   function toggleAll(sectionKey, checked) {
     const checkboxes = document.querySelectorAll(`.chk-${sectionKey}`);
     checkboxes.forEach(chk => chk.checked = checked);
-    updateSelectedCount();
+    updateSelectedCount(sectionKey);
   }
 
-  async function hideSelectedInvoices() {
-    const checked = document.querySelectorAll('.inv-chk:checked');
+  async function hideSelectedInvoices(sectionKey) {
+    const checked = document.querySelectorAll(`.chk-${sectionKey}:checked`);
     const invNums = Array.from(checked).map(chk => chk.value);
     
     if (invNums.length === 0) return;
-    if (!confirm(`Hide ${invNums.length} selected invoices?`)) return;
+    if (!confirm(`Hide ${invNums.length} selected invoices from this section?`)) return;
     
     try {
       await fetch('/api/hide-batch', {
@@ -795,6 +794,10 @@
         <h2>
           <span class="title">${s.title}</span>
           <span class="count">(${items.length} items)</span>
+          <button id="btnHide-${s.key}" onclick="event.stopPropagation(); hideSelectedInvoices('${s.key}')" 
+                  style="display:none; margin-left:15px; padding:4px 10px; font-size:11px; background:#6c757d; color:white; border-radius:4px; vertical-align:middle;">
+             Hide Selected (<span id="selCount-${s.key}">0</span>)
+          </button>
           <span class="toggle-icon">▼</span>
         </h2>`;
       if (items.length === 0) { html += '<p class="empty">None</p>'; } 
@@ -834,7 +837,7 @@
           }
 
           html += `<tr>
-            <td><input type="checkbox" class="inv-chk chk-${s.key}" value="${item.invoicenumber}" onchange="updateSelectedCount()"></td>
+            <td><input type="checkbox" class="inv-chk chk-${s.key}" value="${item.invoicenumber}" onchange="updateSelectedCount('${s.key}')"></td>
             <td>${item.invoicenumber||''}<button class="btn-hide" onclick="hideInvoice('${item.invoicenumber}')">Hide</button></td>
             <td>${item.account_display||'-'}</td>
             <td>${item.contact_display||''}</td>
