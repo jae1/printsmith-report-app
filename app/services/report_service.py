@@ -236,27 +236,30 @@ def get_report_data(target_date=None):
 
                 # Amount logic:
                 if r.get("is_job_posted"):
-                    # If the job was posted today, we want to show its total value as 'paid today' 
-                    # ONLY IF we haven't already captured a cash payment today.
+                    # If the job was posted today, we show its total value as 'paid today' 
+                    # ONLY IF we haven't already captured a specific payment today.
                     if aggregated[inv]["grandtotal"] == 0:
                         aggregated[inv]["grandtotal"] = float(r["transaction_amount"] or 0)
                 else:
                     # If this is a real cash transaction (Payment or Deposit)
-                    amt = float(r["transaction_amount"] or 0)
-                    if amt > 0:
-                        # If we previously just put the 'Job Posted' amount as a placeholder,
-                        # and now we found a REAL payment, let's sum real payments.
-                        if aggregated[inv]["is_job_posted"] and abs(aggregated[inv]["grandtotal"] - aggregated[inv]["invoice_total"]) < 0.01:
-                            aggregated[inv]["grandtotal"] = amt
-                        else:
-                            # PrintSmith consolidated records for multiple invoices often show 
-                            # the TOTAL of the batch. If it's a batch of 1, we can use it.
-                            if len(inv_nums) == 1:
-                                aggregated[inv]["grandtotal"] = amt
-                            else:
-                                # Multi-invoice AR: Fallback to invoice total if not yet set
-                                if aggregated[inv]["grandtotal"] == 0:
-                                    aggregated[inv]["grandtotal"] = aggregated[inv]["invoice_total"]
+                    # We check the specific allocation records for THIS invoice
+                    cur_detail.execute("SELECT SUM(totalpay) FROM tapeinvoicepayrecord WHERE invoicenumber = %s AND isdeleted = false", (inv,))
+                    tip = float(cur_detail.fetchone()['sum'] or 0)
+                    cur_detail.execute("SELECT SUM(totaldeposits) FROM tapedepositappliedrecord WHERE invoicenumber = %s AND isdeleted = false", (inv,))
+                    tda = float(cur_detail.fetchone()['sum'] or 0)
+                    cur_detail.execute("SELECT SUM(amountpaid) FROM tapesalerecord WHERE invoicenumber = %s AND isdeleted = false AND paymode != 'Charge'", (inv,))
+                    tsr = float(cur_detail.fetchone()['sum'] or 0)
+                    
+                    actual_paid_for_this_inv = tip + tda + tsr
+                    
+                    if actual_paid_for_this_inv > 0:
+                        aggregated[inv]["grandtotal"] = actual_paid_for_this_inv
+                    else:
+                        # Fallback for generic AR payments that don't have allocation records
+                        if len(inv_nums) == 1:
+                            aggregated[inv]["grandtotal"] = float(r["transaction_amount"] or 0)
+                        elif aggregated[inv]["grandtotal"] == 0:
+                            aggregated[inv]["grandtotal"] = aggregated[inv]["invoice_total"]
 
         # Final pass for each aggregated invoice to check balance and transaction type
         res = []
@@ -264,26 +267,22 @@ def get_report_data(target_date=None):
         for inv, d in aggregated.items():
             if d.get("account_display") in excluded_accounts: continue
 
-            # Recalculate true balance via historical search
-            cur_detail.execute("""
-                SELECT SUM(total) as balance 
-                FROM accounthistorydata 
-                WHERE (invoicenumber = %s OR name LIKE '%%' || %s || '%%') 
-                AND isdeleted = false
-            """, (inv, inv))
-            current_balance = float(cur_detail.fetchone()["balance"] or 0)
+            # Robust balance calculation using Tape records
+            cur_detail.execute("SELECT SUM(totalpay) FROM tapeinvoicepayrecord WHERE invoicenumber = %s AND isdeleted = false", (inv,))
+            tip = float(cur_detail.fetchone()['sum'] or 0)
+            cur_detail.execute("SELECT SUM(totaldeposits) FROM tapedepositappliedrecord WHERE invoicenumber = %s AND isdeleted = false", (inv,))
+            tda = float(cur_detail.fetchone()['sum'] or 0)
+            cur_detail.execute("SELECT SUM(amountpaid) FROM tapesalerecord WHERE invoicenumber = %s AND isdeleted = false AND paymode != 'Charge'", (inv,))
+            tsr = float(cur_detail.fetchone()['sum'] or 0)
             
+            total_paid_ever = tip + tda + tsr
             grand_total = d["invoice_total"]
-            is_partial = False
             
-            if current_balance > 0.01:
-                is_partial = True
-            elif current_balance < -0.01:
-                # Still a credit/deposit. Partial if doesn't cover whole job.
-                if grand_total > 0.01 and abs(current_balance) < (grand_total - 0.01):
-                    is_partial = True
-
-            d["current_balance"] = current_balance
+            # Remaining Balance
+            display_balance = max(0, grand_total - total_paid_ever)
+            is_partial = display_balance > 0.01 and total_paid_ever > 0
+            
+            d["current_balance"] = display_balance
             d["is_partial"] = is_partial
 
             # Check if invoice was finalized (posted) today
