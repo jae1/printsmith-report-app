@@ -298,7 +298,7 @@ def get_report_data(target_date=None):
             elif d.get("is_deposit"): d["transaction_type"] = "DEPOSIT"
             else: d["transaction_type"] = "PAID"
             
-            d["pay_method_display"] = ", ".join(sorted([m for m in d["pay_methods"] if m and m != "N/A"]))
+            d["pay_method_display"] = ", ".join(sorted([m for m in d["pay_methods"] if m and m not in ("N/A", "Deposit")]))
             if not d["pay_method_display"]: d["pay_method_display"] = "N/A"
             res.append(d)
 
@@ -312,5 +312,8 @@ def get_report_data(target_date=None):
         "in_progress": process_rows(in_progress),
         "ready": process_rows(ready),
         "picked_up": process_rows(picked_up),
+        "paid": process_paid_rows(raw_paid)
+    }
+(picked_up),
         "paid": process_paid_rows(raw_paid)
     }
