@@ -23,30 +23,29 @@ def get_report_data(target_date=None):
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
                TRIM(a.title) as account_name
         FROM invoicebase ib
+        JOIN invoice i ON ib.id = i.id
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
         WHERE DATE(ib.ordereddate) = %s AND ib.isdeleted = false AND ib.voided = false
-        AND ib.invoicenumber >= '50000'
         ORDER BY ib.invoicenumber DESC
     """, (target_date,))
     new_today = cur.fetchall()
 
     # 2. In Progress (Ready is false, Picked up is false, and it's not a new invoice today)
-    # Production status filter (e.g., 1153 is 'In Production')
     cur.execute("""
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
                ib.status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
                TRIM(a.title) as account_name
         FROM invoicebase ib
+        JOIN invoice i ON ib.id = i.id
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
         WHERE ib.onpendinglist = true 
         AND ib.readytopickup = false 
         AND DATE(ib.ordereddate) < %s
-        AND ib.invoicenumber >= '50000'
         AND ib.isdeleted = false AND ib.voided = false
         ORDER BY ib.wanteddate ASC
     """, (target_date,))
@@ -59,19 +58,18 @@ def get_report_data(target_date=None):
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
                TRIM(a.title) as account_name
         FROM invoicebase ib
+        JOIN invoice i ON ib.id = i.id
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
         WHERE ib.readytopickup = true 
         AND ib.onpendinglist = true
-        AND ib.invoicenumber >= '50000'
         AND ib.isdeleted = false AND ib.voided = false
         ORDER BY ib.wanteddate ASC
     """, ())
     ready = cur.fetchall()
 
     # 4. Picked Up / Delivered Today
-    # Note: PrintSmith might use offpendingdate or a specific production status for this
     cur.execute("""
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
                ib.offpendingdate, ib.pickupdate, ib.locationchangedate,
@@ -79,11 +77,11 @@ def get_report_data(target_date=None):
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
                TRIM(a.title) as account_name
         FROM invoicebase ib
+        JOIN invoice i ON ib.id = i.id
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
         WHERE ib.isdeleted = false AND ib.voided = false
-        AND ib.invoicenumber >= '50000'
         AND (DATE(ib.pickupdate) = %s OR (ib.onpendinglist = false AND DATE(ib.offpendingdate) = %s))
         ORDER BY ib.invoicenumber DESC
     """, (target_date, target_date))
@@ -197,6 +195,7 @@ def get_report_data(target_date=None):
                                TRIM(a.title) as account_name, 
                                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name
                         FROM invoicebase ib
+                        JOIN invoice i ON ib.id = i.id
                         LEFT JOIN account a ON ib.account_id = a.id
                         LEFT JOIN contact c ON ib.contact_id = c.id
                         LEFT JOIN party p ON c.id = p.id
