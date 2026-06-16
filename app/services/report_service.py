@@ -125,6 +125,7 @@ def get_report_data(target_date=None):
             ib.ordereddate,
             ib.wanteddate,
             ib.offpendingdate,
+            ib.grandtotal,
             TRIM(CONCAT(p_con.firstname, ' ', p_con.lastname)) as contact_name,
             TRIM(a.title) as account_name,
             -- Indicators for aggregation
@@ -213,10 +214,12 @@ def get_report_data(target_date=None):
                     acc_disp = (r.get("account_name") or r.get("contact_name") or "").strip()
                     con_disp = r.get("contact_name") if r.get("account_name") else ""
                     
+                    inv_actual_total = 0
                     if not job_name or not acc_disp:
                         # Fetch details for this specific invoice
                         cur_detail.execute(f"""
                             SELECT ib.name, ib.ordereddate, ib.wanteddate, ib.offpendingdate,
+                                   ib.grandtotal,
                                    TRIM(a.title) as account_name, 
                                    TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name
                             FROM invoicebase ib
@@ -234,6 +237,7 @@ def get_report_data(target_date=None):
                             offpending_date = det["offpendingdate"]
                             acc_disp = det["account_name"] or det["contact_name"]
                             con_disp = det["contact_name"] if det["account_name"] else ""
+                            inv_actual_total = float(det["grandtotal"] or 0)
                         else:
                             ordered_date = r.get("ordereddate")
                             wanted_date = r.get("wanteddate")
@@ -242,6 +246,7 @@ def get_report_data(target_date=None):
                         ordered_date = r.get("ordereddate")
                         wanted_date = r.get("wanteddate")
                         offpending_date = r.get("offpendingdate")
+                        inv_actual_total = float(r.get("grandtotal") or 0)
 
                     aggregated[inv] = {
                         "invoicenumber": inv,
@@ -250,6 +255,7 @@ def get_report_data(target_date=None):
                         "wanteddate": wanted_date,
                         "offpendingdate": offpending_date,
                         "grandtotal": 0,
+                        "invoice_total": inv_actual_total,
                         "account_display": acc_disp or "-",
                         "contact_display": con_disp or "",
                         "is_deposit": 0,
@@ -264,7 +270,9 @@ def get_report_data(target_date=None):
                     aggregated[inv]["grandtotal"] += float(r["transaction_amount"] or 0)
                 else: # Consolidated AR payment
                     if aggregated[inv]["grandtotal"] == 0:
-                        aggregated[inv]["grandtotal"] = float(r["transaction_amount"] or 0)
+                        # For consolidated AR payments, we use the invoice's own total
+                        # as PrintSmith doesn't break down the batch payment in the history record
+                        aggregated[inv]["grandtotal"] = aggregated[inv].get("invoice_total", 0)
                 
                 aggregated[inv]["is_deposit"] = max(aggregated[inv]["is_deposit"], r["is_deposit"])
                 aggregated[inv]["is_payment"] = max(aggregated[inv]["is_payment"], r["is_payment"])
