@@ -56,9 +56,10 @@ def fetch_and_parse_receipts():
         mail.login(user, password)
         mail.select("inbox")
 
-        # Search for common receipt keywords
-        # Note: Gmail supports complex search queries
-        search_query = '(OR (OR (OR (FROM "amazon.com") (FROM "kellyspicers.com")) (FROM "grimco.com")) (OR (SUBJECT "Order Confirmation") (SUBJECT "Receipt")))'
+        # Search for common receipt keywords received TODAY
+        today_imap = datetime.now().strftime("%d-%b-%Y")
+        # IMAP SINCE search is "on or after". Combining with keywords.
+        search_query = f'SINCE {today_imap} (OR (FROM "amazon.com") (FROM "kellyspicers.com") (FROM "grimco.com") (SUBJECT "Order Confirmation") (SUBJECT "Receipt"))'
         status, messages = mail.search(None, search_query)
 
         if status != "OK":
