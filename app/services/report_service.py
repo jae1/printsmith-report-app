@@ -291,18 +291,32 @@ def get_report_data(target_date=None):
 
                 if r.get("invoicenumber"): # Direct payment record
                     aggregated[inv]["grandtotal"] += float(r["transaction_amount"] or 0)
-                else: # Consolidated AR payment - use the invoice total as PrintSmith doesn't break it down
-                    if aggregated[inv]["grandtotal"] == 0:
-                        cur_detail.execute("SELECT grandtotal FROM invoicebase WHERE invoicenumber = %s", (inv,))
-                        det = cur_detail.fetchone()
-                        if det:
-                            aggregated[inv]["grandtotal"] = float(det["grandtotal"] or 0)
+                else: # Consolidated AR payment
+                    # We MUST use the transaction amount if this record doesn't specify an inv number
+                    # but was matched via the name Payment(123,456).
+                    # HOWEVER, PrintSmith history records for AR payments (type 2) often show the 
+                    # TOTAL of the batch. If it's a batch of 1, we can safely use it.
+                    if len(inv_nums) == 1:
+                        aggregated[inv]["grandtotal"] = float(r["transaction_amount"] or 0)
+                    else:
+                        # For multi-invoice AR payments, PrintSmith doesn't give us the breakdown.
+                        # We use the grandtotal of the invoice AS A FALLBACK only if not yet set.
+                        if aggregated[inv]["grandtotal"] == 0:
+                            cur_detail.execute("SELECT grandtotal FROM invoicebase WHERE invoicenumber = %s", (inv,))
+                            det = cur_detail.fetchone()
+                            if det:
+                                aggregated[inv]["grandtotal"] = float(det["grandtotal"] or 0)
                 
                 aggregated[inv]["is_deposit"] = max(aggregated[inv]["is_deposit"], r["is_deposit"])
                 aggregated[inv]["is_payment"] = max(aggregated[inv]["is_payment"], r["is_payment"])
 
-                # Calculate current balance for this invoice
-                cur_detail.execute("SELECT SUM(total) as balance FROM accounthistorydata WHERE invoicenumber = %s AND isdeleted = false", (inv,))
+                # Calculate current balance for this invoice (Loose search for consolidated payments)
+                cur_detail.execute("""
+                    SELECT SUM(total) as balance 
+                    FROM accounthistorydata 
+                    WHERE (invoicenumber = %s OR name LIKE '%%' || %s || '%%') 
+                    AND isdeleted = false
+                """, (inv, inv))
                 bal_res = cur_detail.fetchone()
                 current_balance = float(bal_res["balance"] or 0)
                 
