@@ -79,44 +79,46 @@ def fetch_and_parse_receipts():
     imap_url = "imap.gmail.com"
 
     processed_ids = _load_processed_ids()
+    # Get current today's spending to check for duplicates even if processed_id is missing
+    target_date_today = datetime.now().date()
+    today_spending = spending_service.get_spending_by_date(target_date_today)
+    
     new_expenses_count = 0
+    print(f"DEBUG: Starting sync for {target_date_today}...")
 
     try:
         mail = imaplib.IMAP4_SSL(imap_url)
         mail.login(user, password)
         mail.select("inbox")
 
-        # Search for common receipt keywords received TODAY
         today_imap = datetime.now().strftime("%d-%b-%Y")
-        # IMAP SINCE search is "on or after". Combining with keywords.
         search_query = f'SINCE {today_imap} (OR (OR (OR (FROM "amazon.com") (FROM "kellyspicers.com")) (FROM "grimco.com")) (OR (SUBJECT "Order Confirmation") (SUBJECT "Receipt")))'
         status, messages = mail.search(None, search_query)
 
-        if status != "OK":
+        if status != "OK" or not messages[0]:
+            print("DEBUG: No matching emails found today.")
+            mail.logout()
             return 0
 
-        for msg_id in messages[0].split():
-            # Use X-GM-MSGID to uniquely identify emails in Gmail
+        msg_list = messages[0].split()
+        print(f"DEBUG: Found {len(msg_list)} candidate emails today.")
+
+        for msg_id in msg_list:
             res, msg_data = mail.fetch(msg_id, '(X-GM-MSGID RFC822)')
-            
             gmail_msg_id = None
             raw_email = None
 
             for response_part in msg_data:
                 if isinstance(response_part, tuple):
-                    # Extract Gmail Message ID
                     data_header = response_part[0].decode('utf-8', errors='ignore')
                     msgid_match = re.search(r'X-GM-MSGID\s+(\d+)', data_header)
                     if msgid_match:
                         gmail_msg_id = msgid_match.group(1)
                     raw_email = response_part[1]
 
-            if not gmail_msg_id or gmail_msg_id in processed_ids:
-                continue
-
-            msg = email.message_from_bytes(raw_email)
+            if not gmail_msg_id: continue
             
-            # Extract Subject
+            msg = email.message_from_bytes(raw_email)
             subject_parts = decode_header(msg["Subject"])
             subject = ""
             for part, encoding in subject_parts:
@@ -124,7 +126,16 @@ def fetch_and_parse_receipts():
                     subject += part.decode(encoding or "utf-8", errors="ignore")
                 else:
                     subject += str(part)
+
+            print(f"DEBUG: Checking Email ID {gmail_msg_id} | Subject: {subject}")
+
+            # SELF-HEALING: If it's in processed_ids but NOT in today's spending, allow re-sync
+            is_already_in_spending = any(str(s.get("source_id")) == str(gmail_msg_id) for s in today_spending)
             
+            if gmail_msg_id in processed_ids and is_already_in_spending:
+                print(f"DEBUG: Skipping {gmail_msg_id} (Already processed and exists in spending)")
+                continue
+
             # Extract Date
             date_tuple = email.utils.parsedate_tz(msg["Date"])
             if date_tuple:
@@ -139,7 +150,6 @@ def fetch_and_parse_receipts():
                 for part in msg.walk():
                     content_type = part.get_content_type()
                     content_disposition = str(part.get("Content-Disposition"))
-                    
                     if content_type == "text/plain":
                         body += part.get_payload(decode=True).decode(errors='ignore')
                     elif content_type == "text/html":
@@ -153,25 +163,19 @@ def fetch_and_parse_receipts():
                 if msg.get_content_type() == "text/html":
                     body = clean_html(body)
 
-            # Combine all text to search for the amount
             full_search_text = body + "\n" + "\n".join(pdf_texts)
-
-            # Determine Vendor
             from_header = msg.get("From", "").lower()
+            
             vendor = "Unknown Vendor"
-            if "amazon" in from_header:
-                vendor = "Amazon"
-            elif "staples" in from_header:
-                vendor = "Staples"
-            elif "uline" in from_header:
-                vendor = "Uline"
-            elif "kellyspicers" in from_header:
-                vendor = "Kellypaper"
-            elif "grimco" in from_header:
-                vendor = "Grimco"
+            if "amazon" in from_header: vendor = "Amazon"
+            elif "staples" in from_header: vendor = "Staples"
+            elif "uline" in from_header: vendor = "Uline"
+            elif "kellyspicers" in from_header or "kelly paper" in from_header.lower(): vendor = "Kellypaper"
+            elif "grimco" in from_header: vendor = "Grimco"
             
             amount = extract_amount(full_search_text)
             if amount:
+                print(f"DEBUG: Successfully extracted ${amount} for {vendor}")
                 spending_service.add_spending(
                     target_date=msg_date,
                     vendor=vendor,
@@ -181,9 +185,12 @@ def fetch_and_parse_receipts():
                 )
                 _save_processed_id(gmail_msg_id)
                 new_expenses_count += 1
+            else:
+                print(f"DEBUG: Could not extract amount for {subject}")
 
         mail.close()
         mail.logout()
+        print(f"DEBUG: Sync complete. Added {new_expenses_count} items.")
         return new_expenses_count
 
     except Exception as e:
