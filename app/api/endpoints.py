@@ -58,10 +58,12 @@ def delete_spending(target_date: str, spending_id: str):
 
 class SpendingUpdate(BaseModel):
     vendor: str
+    description: str
+    amount: float
 
 @router.put("/spending/{target_date}/{spending_id}")
 def update_spending(target_date: str, spending_id: str, update: SpendingUpdate):
-    spending_service.update_spending(target_date, spending_id, update.vendor)
+    spending_service.update_spending(target_date, spending_id, update.vendor, update.description, update.amount)
     return {"status": "success"}
 
 @router.get("/hidden")

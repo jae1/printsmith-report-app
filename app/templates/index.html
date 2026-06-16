@@ -500,18 +500,33 @@
     try { await fetch(`/api/spending/${dateInput.value}/${id}`, { method: 'DELETE' }); loadSpending(); } catch(e) { alert('Failed'); }
   }
 
-  async function editVendor(id, oldVendor) {
-    const newVendor = prompt('Edit Vendor:', oldVendor);
-    if (newVendor !== null && newVendor.trim() !== '' && newVendor !== oldVendor) {
-      try {
-        await fetch(`/api/spending/${dateInput.value}/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ vendor: newVendor.trim() })
-        });
-        loadSpending();
-      } catch(e) { alert('Failed to update vendor'); }
-    }
+  async function updateSpendingInline(id, field, value) {
+    // Find the record in our local data
+    const d = dateInput.value;
+    try {
+      // First, get current record values to not lose other fields
+      const res = await fetch(`/api/spending?target_date=${d}`);
+      const list = await res.json();
+      const item = list.find(s => s.id === id);
+      
+      if (!item) return;
+      
+      // Prepare update payload
+      const update = {
+        vendor: field === 'vendor' ? value : item.vendor,
+        description: field === 'description' ? value : item.description,
+        amount: field === 'amount' ? parseFloat(value.replace(/[^0-9.-]+/g,"")) : item.amount
+      };
+
+      await fetch(`/api/spending/${d}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(update)
+      });
+      
+      // Silent update for better UX, or reload if it was the amount to update totals
+      if (field === 'amount') loadSpending(); 
+    } catch(e) { console.error('Failed to update inline', e); }
   }
 
   function renderSpending(list) {
@@ -520,20 +535,31 @@
     if (list.length === 0) {
       html = '<p class="empty">No spending recorded for this date.</p>';
     } else {
-      html = '<table><tr><th>Vendor</th><th>Description</th><th>Amount</th><th></th></tr>';
+      html = `<table>
+        <tr>
+          <th>Vendor</th>
+          <th>Description</th>
+          <th style="width:120px;">Amount</th>
+          <th style="width:40px;"></th>
+        </tr>`;
       let total = 0;
       for (const s of list) {
         total += s.amount;
         html += `<tr>
-          <td style="cursor:pointer; color:#007bff; text-decoration:underline;" onclick="editVendor('${s.id}', '${s.vendor.replace(/'/g, "\\'")}')">${s.vendor}</td>
-          <td>${s.description}</td>
-          <td>${fmtAmt(s.amount)}</td>
-          <td style="text-align:center;"><button onclick="deleteSpending('${s.id}')" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
+          <td contenteditable="true" onblur="updateSpendingInline('${s.id}', 'vendor', this.innerText)" style="background: #fff; border: 1px solid transparent; border-radius: 4px; padding: 4px 8px;" onfocus="this.style.border='1px solid #007bff'">${s.vendor}</td>
+          <td contenteditable="true" onblur="updateSpendingInline('${s.id}', 'description', this.innerText)" style="background: #fff; border: 1px solid transparent; border-radius: 4px; padding: 4px 8px;" onfocus="this.style.border='1px solid #007bff'">${s.description}</td>
+          <td contenteditable="true" onblur="updateSpendingInline('${s.id}', 'amount', this.innerText)" style="background: #fff; border: 1px solid transparent; border-radius: 4px; padding: 4px 8px; text-align: right;" onfocus="this.style.border='1px solid #007bff'">${fmtAmt(s.amount)}</td>
+          <td style="text-align:center;"><button onclick="deleteSpending('${s.id}')" style="color:red; background:none; border:none; cursor:pointer; font-size:16px;">✖</button></td>
         </tr>`;
       }
-      html += `<tr style="font-weight:bold; background:#fff9f9;"><td colspan="2" style="text-align:right; padding:8px;">Total Spending</td><td style="padding:8px;">${fmtAmt(total)}</td><td></td></tr></table>`;
+      html += `<tr style="font-weight:bold; background:#fff9f9;"><td colspan="2" style="text-align:right; padding:8px;">Total Spending</td><td style="padding:8px; text-align:right;">${fmtAmt(total)}</td><td></td></tr></table>`;
     }
     document.getElementById('spendingTableContainer').innerHTML = html;
+    
+    // Add small tip
+    if (list.length > 0) {
+        document.getElementById('spendingTableContainer').innerHTML += '<p style="font-size:11px; color:#999; margin-top:10px;">💡 Tip: Click any cell above to edit it directly. Changes save when you click away.</p>';
+    }
   }
 
   /* Common Helpers */

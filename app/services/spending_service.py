@@ -53,13 +53,15 @@ def delete_spending(target_date, spending_id):
         _save_spending(data)
     return source_id
 
-def update_spending(target_date, spending_id, vendor):
+def update_spending(target_date, spending_id, vendor, description, amount):
     data = _load_spending()
     date_str = str(target_date)
     if date_str in data:
         for s in data[date_str]:
             if s["id"] == spending_id:
                 s["vendor"] = vendor
+                s["description"] = description
+                s["amount"] = float(amount)
                 break
         _save_spending(data)
 

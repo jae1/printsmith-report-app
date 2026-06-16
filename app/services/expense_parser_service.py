@@ -170,7 +170,7 @@ def fetch_and_parse_receipts():
             if "amazon" in from_header: vendor = "Amazon"
             elif "staples" in from_header: vendor = "Staples"
             elif "uline" in from_header: vendor = "Uline"
-            elif "kellyspicers" in from_header or "kelly paper" in from_header.lower(): vendor = "Kellypaper"
+            elif "kellyspicers" in from_header or "kelly paper" in from_header.lower(): vendor = "Kelly Paper"
             elif "grimco" in from_header: vendor = "Grimco"
             
             amount = extract_amount(full_search_text)
