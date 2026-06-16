@@ -21,7 +21,7 @@ def get_spending_by_date(target_date):
     data = _load_spending()
     return data.get(str(target_date), [])
 
-def add_spending(target_date, vendor, description, amount):
+def add_spending(target_date, vendor, description, amount, source_id=None):
     data = _load_spending()
     date_str = str(target_date)
     if date_str not in data:
@@ -31,16 +31,27 @@ def add_spending(target_date, vendor, description, amount):
         "id": os.urandom(4).hex(), # Simple random ID for deletion
         "vendor": vendor,
         "description": description,
-        "amount": float(amount)
+        "amount": float(amount),
+        "source_id": source_id
     })
     _save_spending(data)
 
 def delete_spending(target_date, spending_id):
     data = _load_spending()
     date_str = str(target_date)
+    source_id = None
     if date_str in data:
-        data[date_str] = [s for s in data[date_str] if s["id"] != spending_id]
+        new_list = []
+        for s in data[date_str]:
+            if s["id"] == spending_id:
+                source_id = s.get("source_id")
+            else:
+                new_list.append(s)
+        data[date_str] = new_list
+        if not data[date_str]:
+            del data[date_str]
         _save_spending(data)
+    return source_id
 
 def update_spending(target_date, spending_id, vendor):
     data = _load_spending()

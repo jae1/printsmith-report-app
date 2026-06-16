@@ -27,6 +27,14 @@ def _save_processed_id(msg_id):
     with open(PROCESSED_EMAILS_FILE, "w") as f:
         json.dump(list(ids), f)
 
+def remove_processed_id(msg_id):
+    if not msg_id: return
+    ids = _load_processed_ids()
+    if str(msg_id) in ids:
+        ids.discard(str(msg_id))
+        with open(PROCESSED_EMAILS_FILE, "w") as f:
+            json.dump(list(ids), f)
+
 def clean_html(html_content):
     # Basic HTML strip
     text = re.sub(r'<[^>]+>', ' ', html_content)
@@ -162,7 +170,8 @@ def fetch_and_parse_receipts():
                     target_date=msg_date,
                     vendor=vendor,
                     description=f"Auto-extracted: {subject}",
-                    amount=amount
+                    amount=amount,
+                    source_id=gmail_msg_id
                 )
                 _save_processed_id(gmail_msg_id)
                 new_expenses_count += 1

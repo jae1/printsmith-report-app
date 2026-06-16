@@ -51,7 +51,9 @@ def add_spending(target_date: str, item: SpendingCreate):
 
 @router.delete("/spending/{target_date}/{spending_id}")
 def delete_spending(target_date: str, spending_id: str):
-    spending_service.delete_spending(target_date, spending_id)
+    source_id = spending_service.delete_spending(target_date, spending_id)
+    if source_id:
+        expense_parser_service.remove_processed_id(source_id)
     return {"status": "success"}
 
 class SpendingUpdate(BaseModel):
