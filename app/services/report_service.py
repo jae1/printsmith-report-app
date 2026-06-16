@@ -27,6 +27,7 @@ def get_report_data(target_date=None):
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
         WHERE DATE(ib.ordereddate) = %s AND ib.isdeleted = false AND ib.voided = false
+        AND ib.invoicenumber >= '50000'
         ORDER BY ib.invoicenumber DESC
     """, (target_date,))
     new_today = cur.fetchall()
@@ -45,6 +46,7 @@ def get_report_data(target_date=None):
         WHERE ib.onpendinglist = true 
         AND ib.readytopickup = false 
         AND DATE(ib.ordereddate) < %s
+        AND ib.invoicenumber >= '50000'
         AND ib.isdeleted = false AND ib.voided = false
         ORDER BY ib.wanteddate ASC
     """, (target_date,))
@@ -62,6 +64,7 @@ def get_report_data(target_date=None):
         LEFT JOIN account a ON ib.account_id = a.id
         WHERE ib.readytopickup = true 
         AND ib.onpendinglist = true
+        AND ib.invoicenumber >= '50000'
         AND ib.isdeleted = false AND ib.voided = false
         ORDER BY ib.wanteddate ASC
     """, ())
@@ -80,6 +83,7 @@ def get_report_data(target_date=None):
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
         WHERE ib.isdeleted = false AND ib.voided = false
+        AND ib.invoicenumber >= '50000'
         AND (DATE(ib.pickupdate) = %s OR (ib.onpendinglist = false AND DATE(ib.offpendingdate) = %s))
         ORDER BY ib.invoicenumber DESC
     """, (target_date, target_date))
