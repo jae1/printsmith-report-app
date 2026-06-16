@@ -51,8 +51,9 @@ def extract_amount(text):
         return None
     # Look for common patterns including invoice-specific ones
     patterns = [
-        r"(?:Order Total|Total|Grand Total|Amount Paid|TOTAL DUE|Invoice Total)[:\s]*\$?\s*([\d,]+\.\d{2})",
+        r"(?:Order Total|Total|Grand Total|Amount Paid|TOTAL DUE|Invoice Total|AMT DUE)[:\s]*\$?\s*([\d,]+\.\d{2})",
         r"Total\s*Amount\s*[:\s]*\$?\s*([\d,]+\.\d{2})",
+        r"TOTAL[:\s]+\s*([\d,]+\.\d{2})",
         r"\$\s*([\d,]+\.\d{2})"
     ]
     for pattern in patterns:
