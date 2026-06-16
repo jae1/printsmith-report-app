@@ -22,18 +22,23 @@ def _load_processed_ids():
         return set()
 
 def _save_processed_id(msg_id):
+    if not msg_id: return
     ids = _load_processed_ids()
-    ids.add(msg_id)
+    ids.add(str(msg_id))
     with open(PROCESSED_EMAILS_FILE, "w") as f:
         json.dump(list(ids), f)
 
 def remove_processed_id(msg_id):
     if not msg_id: return
+    msg_id_str = str(msg_id)
     ids = _load_processed_ids()
-    if str(msg_id) in ids:
-        ids.discard(str(msg_id))
+    if msg_id_str in ids:
+        print(f"DEBUG: Removing {msg_id_str} from processed history to allow re-sync.")
+        ids.discard(msg_id_str)
         with open(PROCESSED_EMAILS_FILE, "w") as f:
             json.dump(list(ids), f)
+    else:
+        print(f"DEBUG: {msg_id_str} not found in processed history.")
 
 def clean_html(html_content):
     # Basic HTML strip
