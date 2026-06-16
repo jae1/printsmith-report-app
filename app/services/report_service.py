@@ -314,6 +314,3 @@ def get_report_data(target_date=None):
         "picked_up": process_rows(picked_up),
         "paid": process_paid_rows(raw_paid)
     }
-(picked_up),
-        "paid": process_paid_rows(raw_paid)
-    }
