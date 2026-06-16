@@ -7,6 +7,7 @@ from app.services.email_service import send_report_email
 from app.core.config import SMTP_CONFIG
 from app.services import hide_service, spending_service, settings_service, expense_parser_service
 from pydantic import BaseModel
+from typing import Optional
 
 router = APIRouter(prefix="/api")
 
@@ -35,6 +36,7 @@ class SpendingCreate(BaseModel):
     vendor: str
     description: str
     amount: float
+    card: Optional[str] = None
 
 @router.get("/spending")
 def get_spending(target_date: str):
@@ -46,7 +48,7 @@ def get_vendors():
 
 @router.post("/spending")
 def add_spending(target_date: str, item: SpendingCreate):
-    spending_service.add_spending(target_date, item.vendor, item.description, item.amount)
+    spending_service.add_spending(target_date, item.vendor, item.description, item.amount, card=item.card)
     return {"status": "success"}
 
 @router.delete("/spending/{target_date}/{spending_id}")
@@ -60,10 +62,11 @@ class SpendingUpdate(BaseModel):
     vendor: str
     description: str
     amount: float
+    card: Optional[str] = None
 
 @router.put("/spending/{target_date}/{spending_id}")
 def update_spending(target_date: str, spending_id: str, update: SpendingUpdate):
-    spending_service.update_spending(target_date, spending_id, update.vendor, update.description, update.amount)
+    spending_service.update_spending(target_date, spending_id, update.vendor, update.description, update.amount, update.card)
     return {"status": "success"}
 
 @router.get("/hidden")

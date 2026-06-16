@@ -21,7 +21,7 @@ def get_spending_by_date(target_date):
     data = _load_spending()
     return data.get(str(target_date), [])
 
-def add_spending(target_date, vendor, description, amount, source_id=None):
+def add_spending(target_date, vendor, description, amount, source_id=None, card=None):
     data = _load_spending()
     date_str = str(target_date)
     if date_str not in data:
@@ -32,7 +32,8 @@ def add_spending(target_date, vendor, description, amount, source_id=None):
         "vendor": vendor,
         "description": description,
         "amount": float(amount),
-        "source_id": source_id
+        "source_id": source_id,
+        "card": card
     })
     _save_spending(data)
 
@@ -53,7 +54,7 @@ def delete_spending(target_date, spending_id):
         _save_spending(data)
     return source_id
 
-def update_spending(target_date, spending_id, vendor, description, amount):
+def update_spending(target_date, spending_id, vendor, description, amount, card):
     data = _load_spending()
     date_str = str(target_date)
     if date_str in data:
@@ -62,6 +63,7 @@ def update_spending(target_date, spending_id, vendor, description, amount):
                 s["vendor"] = vendor
                 s["description"] = description
                 s["amount"] = float(amount)
+                s["card"] = card
                 break
         _save_spending(data)
 

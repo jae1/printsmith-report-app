@@ -62,6 +62,21 @@ def extract_amount(text):
             return float(match.group(1).replace(",", ""))
     return None
 
+def extract_card(text):
+    """
+    Attempt to extract the last 4 digits of the card used.
+    """
+    patterns = [
+        r"(?:Visa|Mastercard|Amex|Discover|Card|Account)[:\s*]*[\*xX\-]*(\d{4})",
+        r"(?:ending in|ending with)[:\s]*(\d{4})",
+        r"\*{12}(\d{4})"
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match.group(1)
+    return None
+
 def extract_text_from_pdf(pdf_bytes):
     try:
         reader = PdfReader(io.BytesIO(pdf_bytes))
@@ -220,13 +235,17 @@ def fetch_and_parse_receipts():
                 item_summary = summarize_items(full_search_text, vendor)
                 detailed_desc = f"{item_summary} ({subject})"
                 
-                print(f"DEBUG: Successfully extracted ${amount} for {vendor} - {item_summary}")
+                # Extract Card Info
+                card_last_4 = extract_card(full_search_text)
+                
+                print(f"DEBUG: Successfully extracted ${amount} for {vendor} - {item_summary} (Card: {card_last_4})")
                 spending_service.add_spending(
                     target_date=msg_date,
                     vendor=vendor,
                     description=detailed_desc,
                     amount=amount,
-                    source_id=gmail_msg_id
+                    source_id=gmail_msg_id,
+                    card=card_last_4
                 )
                 _save_processed_id(gmail_msg_id)
                 new_expenses_count += 1
