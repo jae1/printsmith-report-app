@@ -67,6 +67,7 @@
   .badge-bal { background: #FFC000; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
   .badge-type { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 5px; color: white; }
   .bg-paid { background: #28a745; }
+  .bg-partial { background: #FFC000; color: #333 !important; }
   .bg-deposit { background: #007bff; }
   .bg-ar { background: #17a2b8; }
   .bg-mixed { background: #6f42c1; }
@@ -771,12 +772,18 @@
         let sectionTotal = 0;
         for (const item of items) {
           sectionTotal += parseFloat(item.grandtotal || 0);
-          let typeBadge = (s.key === 'paid' && item.transaction_type) ? `<span class="badge-type ${item.transaction_type === 'PAID' ? 'bg-paid' : (item.transaction_type === 'DEPOSIT' ? 'bg-deposit' : 'bg-mixed')}">${item.transaction_type}</span>` : '';
+          let typeBadge = (s.key === 'paid' && item.transaction_type) ? `<span class="badge-type ${item.transaction_type === 'PAID' ? 'bg-paid' : (item.transaction_type === 'PARTIAL' ? 'bg-partial' : (item.transaction_type === 'DEPOSIT' ? 'bg-deposit' : 'bg-mixed'))}">${item.transaction_type}</span>` : '';
+          
+          let balInfo = '';
+          if (item.transaction_type === 'PARTIAL' && item.current_balance > 0) {
+            balInfo = `<span class="badge-bal">BAL DUE: ${fmtAmt(item.current_balance)}</span>`;
+          }
+
           html += `<tr>
             <td>${item.invoicenumber||''}<button class="btn-hide" onclick="hideInvoice('${item.invoicenumber}')">Hide</button></td>
             <td>${item.account_display||'-'}</td>
             <td>${item.contact_display||''}</td>
-            <td>${typeBadge}${item.job_name||''}${item.payment_status === 'PAID' ? '<span class="badge-paid">PAID</span>' : (item.payment_status && item.payment_status.startsWith('BAL DUE') ? `<span class="badge-bal">${item.payment_status}</span>` : '')}</td>
+            <td>${typeBadge}${item.job_name||''}${balInfo}${item.payment_status === 'PAID' ? '<span class="badge-paid">PAID</span>' : (item.payment_status && item.payment_status.startsWith('BAL DUE') ? `<span class="badge-bal">${item.payment_status}</span>` : '')}</td>
             ${s.showStatus ? `<td>${item.status||'-'}</td>` : ''}
             ${!s.hideOrdered ? `<td>${fmt(item.ordereddate)}</td>` : ''}
             <td>${fmt(item[s.dateCol])}</td>

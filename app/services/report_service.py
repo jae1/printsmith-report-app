@@ -301,6 +301,17 @@ def get_report_data(target_date=None):
                 aggregated[inv]["is_deposit"] = max(aggregated[inv]["is_deposit"], r["is_deposit"])
                 aggregated[inv]["is_payment"] = max(aggregated[inv]["is_payment"], r["is_payment"])
 
+                # Calculate current balance for this invoice
+                cur_detail.execute("SELECT SUM(total) as balance FROM accounthistorydata WHERE invoicenumber = %s AND isdeleted = false", (inv,))
+                bal_res = cur_detail.fetchone()
+                current_balance = float(bal_res["balance"] or 0)
+                
+                # If balance is very small (rounding), treat as 0
+                if abs(current_balance) < 0.01: current_balance = 0
+
+                aggregated[inv]["current_balance"] = current_balance
+                aggregated[inv]["is_partial"] = current_balance > 0.01
+
         cur_detail.close()
         conn_detail.close()
 
@@ -327,6 +338,8 @@ def get_report_data(target_date=None):
             # Transaction Type Label
             if d.get("is_ar"):
                 d["transaction_type"] = "AR PAYMENT"
+            elif d.get("is_partial"):
+                d["transaction_type"] = "PARTIAL"
             elif d.get("is_payment") or is_finalized_today:
                 d["transaction_type"] = "PAID"
             elif d.get("is_deposit"):
