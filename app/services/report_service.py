@@ -306,11 +306,29 @@ def get_report_data(target_date=None):
                 bal_res = cur_detail.fetchone()
                 current_balance = float(bal_res["balance"] or 0)
                 
-                # If balance is very small (rounding), treat as 0
-                if abs(current_balance) < 0.01: current_balance = 0
+                # Fetch grandtotal to compare for deposits
+                cur_detail.execute("SELECT grandtotal FROM invoicebase WHERE invoicenumber = %s AND isdeleted = false", (inv,))
+                inv_res = cur_detail.fetchone()
+                grand_total = float(inv_res["grandtotal"] or 0) if inv_res else 0
+
+                # Logic refinement:
+                # 1. If balance is 0 (or near 0), it's fully paid.
+                # 2. If it's a deposit (recordtype 7) and balance equals grandtotal, it's a "Full Deposit" (Paid).
+                # 3. Otherwise, if 0 < balance < grandtotal, it's PARTIAL.
+                
+                is_partial = False
+                if abs(current_balance) < 0.01:
+                    is_partial = False
+                    current_balance = 0
+                elif abs(current_balance - grand_total) < 0.01:
+                    # Sum of history equals grandtotal -> This is a full payment/deposit
+                    is_partial = False
+                    current_balance = 0
+                else:
+                    is_partial = True
 
                 aggregated[inv]["current_balance"] = current_balance
-                aggregated[inv]["is_partial"] = current_balance > 0.01
+                aggregated[inv]["is_partial"] = is_partial
 
         cur_detail.close()
         conn_detail.close()
