@@ -134,7 +134,7 @@ def generate_mobile_html(data):
             {build_cards(data['ready'])}
 
             <div class="section-header">
-                <span class="section-title">✅ Jobs Completed Today</span>
+                <span class="section-title">✅ Completed Today</span>
             </div>
             {build_cards(data['picked_up'])}
 

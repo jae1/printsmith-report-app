@@ -23,24 +23,31 @@
 
 ## Agent Roles & Maintenance Plan
 
-When modifying this codebase, the active AI agent must adopt one of the following roles based on the target files:
+When modifying this codebase, the active AI agent must adopt one of the specialized roles defined in the `.agents/` directory.
+
+### Routing CLI Tool
+We have implemented a helper CLI script `agent_selector.py` to easily list roles, load rules, and recommend which agent should handle specific files.
+- **List Agents**: `python agent_selector.py --list`
+- **Load Agent Instructions**: `python agent_selector.py --load [coordinator|sql_logic|expense_parser|web_ui|sysops]`
+- **Recommend Agent for Files**: `python agent_selector.py --recommend app/services/report_service.py`
 
 ### 1. Coordinator Agent (Guardrails & Verification)
-- **Files Owned**: `GEMINI.md`, `README.md`, testing configurations.
-- **Protocol**: Ensures no logic updates violate the Core Reporting Rules above. Verifies code before merging.
+- **Profile**: [.agents/1_coordinator.md](file:///Users/onp/printsmith-report-app/.agents/1_coordinator.md)
+- **Scope**: `GEMINI.md`, `README.md`, testing configurations.
 
 ### 2. SQL & Report Logic Agent (Core Database Query Expert)
-- **Files Owned**: `app/services/report_service.py`, `app/db/`
-- **Protocol**: Ensures correct SQL JOINs, fast indexes, and precise calculation of Invoice status, ready items, and paid transactions.
+- **Profile**: [.agents/2_sql_report_logic.md](file:///Users/onp/printsmith-report-app/.agents/2_sql_report_logic.md)
+- **Scope**: `app/services/report_service.py`, `app/services/hide_service.py`, `app/db/`
 
-### 3. Receipt Parser & Sync Agent (Email & Expense Expert)
-- **Files Owned**: `app/services/expense_parser_service.py`, `app/services/spending_service.py`, `daily_spending.json`
-- **Protocol**: Optimizes receipt scanning regex patterns, parses invoice attachments using `pypdf`, and manages local spending stores.
+### 3. Expense Parser & Sync Agent (Email & Expense Expert)
+- **Profile**: [.agents/3_expense_parser_sync.md](file:///Users/onp/printsmith-report-app/.agents/3_expense_parser_sync.md)
+- **Scope**: `app/services/expense_parser_service.py`, `app/services/spending_service.py`, `daily_spending.json`
 
 ### 4. Web UI & Experience Agent (Frontend & Interaction Expert)
-- **Files Owned**: `app/templates/`, `app/static/`
-- **Protocol**: Builds beautiful, responsive layouts. Implements print media CSS, modal views, and interactive state buttons in Javascript.
+- **Profile**: [.agents/4_web_ui.md](file:///Users/onp/printsmith-report-app/.agents/4_web_ui.md)
+- **Scope**: `app/templates/`, `app/static/`, `app/services/export_service.py`
 
 ### 5. SysOps & Email Delivery Agent (Automation & Deployment Expert)
-- **Files Owned**: `app/main.py`, `app/services/email_service.py`, `app/core/config.py`, `requirements.txt`
-- **Protocol**: Manages background asynchronous loops (email scheduler, receipt sync task), monitors server startup, and handles SMTP settings.
+- **Profile**: [.agents/5_sysops_email.md](file:///Users/onp/printsmith-report-app/.agents/5_sysops_email.md)
+- **Scope**: `app/main.py`, `app/services/email_service.py`, `app/services/settings_service.py`, `requirements.txt`
+

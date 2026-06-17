@@ -67,7 +67,7 @@ def get_report_data(target_date=None):
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
         LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
-        WHERE (ib.readytopickup = true OR pl.name IN ('Ready for Pickup', 'Ready for Delivery', 'Shipping'))
+        WHERE (ib.readytopickup = true OR pl.name IN ('Ready for Pickup', 'Ready for Delivery'))
         AND ib.onpendinglist = true
         AND DATE(ib.ordereddate) >= %s
         AND ib.isdeleted = false AND ib.voided = false
@@ -75,7 +75,7 @@ def get_report_data(target_date=None):
     """, (pickup_limit_date,))
     ready = cur.fetchall()
 
-    # 4. Picked Up / Delivered Today
+    # 4. Picked Up / Delivered Today (Completed Today)
     cur.execute("""
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
                ib.offpendingdate, ib.pickupdate, ib.locationchangedate,
@@ -89,9 +89,13 @@ def get_report_data(target_date=None):
         LEFT JOIN account a ON ib.account_id = a.id
         LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
         WHERE ib.isdeleted = false AND ib.voided = false
-        AND (DATE(ib.pickupdate) = %s OR (ib.onpendinglist = false AND DATE(ib.offpendingdate) = %s))
+        AND (
+            DATE(ib.pickupdate) = %s 
+            OR (ib.onpendinglist = false AND DATE(ib.offpendingdate) = %s)
+            OR (pl.name = 'Shipping' AND DATE(ib.locationchangedate) = %s)
+        )
         ORDER BY ib.invoicenumber DESC
-    """, (target_date, target_date))
+    """, (target_date, target_date, target_date))
     picked_up = cur.fetchall()
 
     # 5. Paid Today (Aggregate direct payments + Parse consolidated AR payments)

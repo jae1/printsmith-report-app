@@ -12,7 +12,7 @@ def generate_report_xlsx(data):
         ("new_today", "New Today", "4472C4"),
         ("in_progress", "In Progress", "7030A0"),
         ("ready", "Ready for Pickup", "70AD47"),
-        ("picked_up", "Picked Up / Delivered Today", "ED7D31"),
+        ("picked_up", "Completed Today", "ED7D31"),
         ("paid", "Paid Today", "FFC000"),
     ]
 
