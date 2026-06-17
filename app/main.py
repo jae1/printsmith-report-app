@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import endpoints, views
 import asyncio
 from datetime import datetime
-from app.services import settings_service, email_service, report_service
+from app.services import settings_service, email_service, report_service, expense_parser_service
 
 def create_app() -> FastAPI:
     app = FastAPI(title="PrintSmith Report App")
@@ -21,8 +21,25 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def startup_event():
         asyncio.create_task(schedule_email_task())
+        asyncio.create_task(schedule_receipt_sync_task())
 
     return app
+
+async def schedule_receipt_sync_task():
+    while True:
+        try:
+            settings = settings_service.load_settings()
+            if settings.get("auto_sync_receipts"):
+                print(f"[{datetime.now()}] Running auto-receipt sync...")
+                # Run in thread pool because IMAP is blocking
+                loop = asyncio.get_event_loop()
+                count = await loop.run_in_executor(None, expense_parser_service.fetch_and_parse_receipts)
+                if count > 0:
+                    print(f"Auto-sync found {count} new expenses.")
+        except Exception as e:
+            print(f"Error in auto-receipt sync: {e}")
+            
+        await asyncio.sleep(3600) # Check every 1 hour
 
 async def schedule_email_task():
     last_sent_date = None

@@ -19,7 +19,7 @@ def get_report_data(target_date=None):
     # 1. New Today (Invoices created today)
     cur.execute("""
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
-               ib.status,
+               pl.name as status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
                TRIM(a.title) as account_name
         FROM invoicebase ib
@@ -27,6 +27,7 @@ def get_report_data(target_date=None):
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
+        LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
         WHERE DATE(ib.ordereddate) = %s AND ib.isdeleted = false AND ib.voided = false
         ORDER BY ib.invoicenumber DESC
     """, (target_date,))
@@ -35,7 +36,7 @@ def get_report_data(target_date=None):
     # 2. In Progress (Ready is false, Picked up is false, and it's not a new invoice today)
     cur.execute("""
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
-               ib.status,
+               pl.name as status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
                TRIM(a.title) as account_name
         FROM invoicebase ib
@@ -43,8 +44,10 @@ def get_report_data(target_date=None):
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
+        LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
         WHERE ib.onpendinglist = true 
         AND ib.readytopickup = false 
+        AND (pl.name IS NULL OR pl.name NOT IN ('Ready for Pickup', 'Ready for Delivery', 'Shipping'))
         AND DATE(ib.ordereddate) < %s
         AND ib.isdeleted = false AND ib.voided = false
         ORDER BY ib.wanteddate ASC
@@ -55,7 +58,7 @@ def get_report_data(target_date=None):
     pickup_limit_date = target_date - timedelta(days=10)
     cur.execute("""
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
-               ib.status,
+               pl.name as status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
                TRIM(a.title) as account_name
         FROM invoicebase ib
@@ -63,7 +66,8 @@ def get_report_data(target_date=None):
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
-        WHERE ib.readytopickup = true 
+        LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
+        WHERE (ib.readytopickup = true OR pl.name IN ('Ready for Pickup', 'Ready for Delivery', 'Shipping'))
         AND ib.onpendinglist = true
         AND DATE(ib.ordereddate) >= %s
         AND ib.isdeleted = false AND ib.voided = false
@@ -75,7 +79,7 @@ def get_report_data(target_date=None):
     cur.execute("""
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
                ib.offpendingdate, ib.pickupdate, ib.locationchangedate,
-               ib.status,
+               pl.name as status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
                TRIM(a.title) as account_name
         FROM invoicebase ib
@@ -83,6 +87,7 @@ def get_report_data(target_date=None):
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
+        LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
         WHERE ib.isdeleted = false AND ib.voided = false
         AND (DATE(ib.pickupdate) = %s OR (ib.onpendinglist = false AND DATE(ib.offpendingdate) = %s))
         ORDER BY ib.invoicenumber DESC
