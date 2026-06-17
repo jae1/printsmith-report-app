@@ -47,7 +47,7 @@ def get_report_data(target_date=None):
         LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
         WHERE ib.onpendinglist = true 
         AND ib.readytopickup = false 
-        AND (pl.name IS NULL OR pl.name NOT IN ('Ready for Pickup', 'Ready for Delivery', 'Shipping'))
+        AND (pl.name IS NULL OR pl.name NOT IN ('Ready for Pickup', 'Ready for Delivery', 'Shipping', 'Complete'))
         AND DATE(ib.ordereddate) < %s
         AND ib.isdeleted = false AND ib.voided = false
         ORDER BY ib.wanteddate ASC
@@ -94,9 +94,10 @@ def get_report_data(target_date=None):
             DATE(ib.pickupdate) = %s 
             OR (ib.onpendinglist = false AND DATE(ib.offpendingdate) = %s)
             OR (pl.name = 'Shipping' AND DATE(ib.locationchangedate) = %s)
+            OR (pl.name = 'Complete' AND DATE(ib.locationchangedate) = %s)
         )
         ORDER BY ib.invoicenumber DESC
-    """, (target_date, target_date, target_date))
+    """, (target_date, target_date, target_date, target_date))
     picked_up = cur.fetchall()
 
     # 5. Paid Today (Aggregate direct payments + Parse consolidated AR payments)
