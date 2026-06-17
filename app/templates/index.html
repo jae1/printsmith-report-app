@@ -486,12 +486,14 @@
     const row = document.querySelector(`tr[data-id="${id}"]`);
     const vendor = row.querySelector('.edit-vendor').value;
     const desc = row.querySelector('.edit-desc').value;
+    const card = row.querySelector('.edit-card').value;
     const amt = row.querySelector('.edit-amt').value;
 
     const update = {
       vendor: vendor.trim(),
       description: desc.trim(),
-      amount: parseFloat(amt.replace(/[^0-9.-]+/g,""))
+      amount: parseFloat(amt.replace(/[^0-9.-]+/g,"")),
+      card: card.trim()
     };
 
     try {
@@ -609,7 +611,8 @@
       const update = {
         vendor: field === 'vendor' ? value : item.vendor,
         description: field === 'description' ? value : item.description,
-        amount: field === 'amount' ? parseFloat(value.replace(/[^0-9.-]+/g,"")) : item.amount
+        amount: field === 'amount' ? parseFloat(value.replace(/[^0-9.-]+/g,"")) : item.amount,
+        card: field === 'card' ? value : item.card
       };
 
       await fetch(`/api/spending/${d}/${id}`, {
