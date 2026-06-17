@@ -68,6 +68,7 @@ def get_report_data(target_date=None):
         LEFT JOIN account a ON ib.account_id = a.id
         LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
         WHERE (ib.readytopickup = true OR pl.name IN ('Ready for Pickup', 'Ready for Delivery'))
+        AND (pl.name IS NULL OR pl.name != 'Shipping')
         AND ib.onpendinglist = true
         AND DATE(ib.ordereddate) >= %s
         AND ib.isdeleted = false AND ib.voided = false
