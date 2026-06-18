@@ -26,8 +26,8 @@
 - **Why:** To prevent artificially inflating today's cash flow when no actual new money was collected today.
 
 ### 7. PostgreSQL Reserved Keyword 'date'
-- **Rule:** When querying columns named `date` in PostgreSQL (like `tapeinvoicepayrecord.date`), use the casting syntax `date::date` instead of the `DATE()` function.
-- **Why:** `date` is a reserved keyword in PostgreSQL. While `DATE("date")` works in some contexts, `date::date` is more universally compatible and explicitly casts the column value without syntax ambiguity.
+- **Rule:** When querying dates in `tapeinvoicepayrecord` or `tapesalerecord`, ALWAYS use the `localdate` column instead of the `date` column.
+- **Why:** `date` is a reserved keyword in PostgreSQL and causes persistent syntax and type-casting errors across different database driver versions. The `localdate` column contains the exact same date value without syntax ambiguity.
 
 ## Agent Roles & Maintenance Plan
 
