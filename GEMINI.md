@@ -21,6 +21,14 @@
 ### 5. Post/Deposit Overlap
 - **Rule:** If a job was fully paid via deposit and posted on the same day, consolidate into one PAID row with the full amount.
 
+### 6. Paid Today (No New Money Rule)
+- **Rule:** If an invoice was fully pre-paid via deposit on a *previous* day, and is simply "Posted" today without any actual new payment collected today, it MUST NOT appear in the "Paid Today" section. 
+- **Why:** To prevent artificially inflating today's cash flow when no actual new money was collected today.
+
+### 7. PostgreSQL Reserved Keyword 'date'
+- **Rule:** When querying columns named `date` in PostgreSQL (like `tapeinvoicepayrecord.date`), use the casting syntax `date::date` instead of the `DATE()` function.
+- **Why:** `date` is a reserved keyword in PostgreSQL. While `DATE("date")` works in some contexts, `date::date` is more universally compatible and explicitly casts the column value without syntax ambiguity.
+
 ## Agent Roles & Maintenance Plan
 
 When modifying this codebase, the active AI agent must adopt one of the specialized roles defined in the `.agents/` directory.
