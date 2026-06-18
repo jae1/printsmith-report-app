@@ -265,6 +265,22 @@ def get_report_data(target_date=None):
             d["current_balance"] = display_balance
             d["is_partial"] = is_partial
 
+            # --- Check if there was actual money moved TODAY ---
+            # We don't want to show an invoice in "Paid Today" if the only thing that happened today was posting,
+            # and it was already fully paid via a deposit on a PREVIOUS day.
+            actual_payment_today = d.get("is_payment", 0) > 0 or d.get("is_deposit", 0) > 0
+            if not actual_payment_today and d.get("is_job_posted", 0) > 0:
+                # Let's verify if there is ANY tapeinvoicepayrecord or tapesalerecord TODAY that is NOT just 'Deposit'
+                cur_detail.execute("SELECT SUM(totalpay) FROM tapeinvoicepayrecord WHERE invoicenumber = %s AND DATE(date) = %s AND isdeleted = false AND method != 'Deposit'", (inv, target_date))
+                tip_today = float(cur_detail.fetchone()['sum'] or 0)
+                cur_detail.execute("SELECT SUM(amountpaid) FROM tapesalerecord WHERE invoicenumber = %s AND DATE(date) = %s AND isdeleted = false AND paymode != 'Charge' AND paymode != 'Deposit'", (inv, target_date))
+                tsr_today = float(cur_detail.fetchone()['sum'] or 0)
+                
+                if tip_today + tsr_today <= 0:
+                    # There is NO actual new money today. 
+                    # It was likely fully pre-paid by a deposit yesterday, and just posted today.
+                    continue
+
             is_finalized_today = False
             if d.get("offpendingdate"):
                 post_date = d["offpendingdate"]
