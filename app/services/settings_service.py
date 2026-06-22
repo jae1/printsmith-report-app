@@ -10,7 +10,11 @@ DEFAULT_SETTINGS = {
     "auto_send_days": [0, 1, 2, 3, 4], # Mon-Fri
     "auto_sync_receipts": False,
     "report_title_prefix": "Overnight",
-    "excluded_paid_accounts": []
+    "excluded_paid_accounts": [
+        "Belltown Minuteman Press",
+        "Federal Way Minuteman Press",
+        "Green River Printing"
+    ]
 }
 
 def load_settings():
@@ -20,7 +24,19 @@ def load_settings():
         with open(SETTINGS_FILE, "r") as f:
             settings = json.load(f)
             # Merge with defaults to ensure all keys exist
-            return {**DEFAULT_SETTINGS, **settings}
+            merged = {**DEFAULT_SETTINGS, **settings}
+            
+            # Force add subsidiary accounts
+            subsidiaries = [
+                "Belltown Minuteman Press",
+                "Federal Way Minuteman Press",
+                "Green River Printing"
+            ]
+            excluded = set(merged.get("excluded_paid_accounts", []))
+            excluded.update(subsidiaries)
+            merged["excluded_paid_accounts"] = list(excluded)
+            
+            return merged
     except:
         return DEFAULT_SETTINGS
 
