@@ -5,3 +5,4 @@ app_settings.json
 daily_spending.json
 hidden_invoices.json
 .DS_Store
+server_auto_update.log
