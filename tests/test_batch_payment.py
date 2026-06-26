@@ -31,5 +31,25 @@ class TestBatchPaymentFix(unittest.TestCase):
                 self.assertEqual(found_invs[inv], expected_amount, 
                                  f"Invoice #{inv} has incorrect amount. Expected {expected_amount}, got {found_invs[inv]}")
 
+    def test_single_ar_partial_payment_uses_today_payment_not_invoice_total(self):
+        data = get_report_data(date(2026, 6, 16))
+        found = {
+            item['invoicenumber']: round(float(item['grandtotal']), 2)
+            for item in data['paid']
+        }
+
+        self.assertIn('56276', found)
+        self.assertEqual(found['56276'], 20.62)
+
+    def test_later_ar_batch_uses_remaining_balance_not_invoice_total(self):
+        data = get_report_data(date(2026, 6, 22))
+        found = {
+            item['invoicenumber']: round(float(item['grandtotal']), 2)
+            for item in data['paid']
+        }
+
+        self.assertIn('56276', found)
+        self.assertEqual(found['56276'], 1668.52)
+
 if __name__ == '__main__':
     unittest.main()

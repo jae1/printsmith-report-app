@@ -163,6 +163,50 @@ def get_report_data(target_date=None):
         conn_detail = get_conn()
         cur_detail = conn_detail.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+        def money(value):
+            return round(float(value or 0), 2)
+
+        def close_money(left, right):
+            return abs(money(left) - money(right)) <= 0.01
+
+        def get_ar_payment_splits(inv_nums, batch_amount):
+            if not inv_nums:
+                return {}
+
+            placeholders = ",".join(["%s"] * len(inv_nums))
+            cur_detail.execute(f"""
+                SELECT invoicenumber, total, partialpaytotal, finalpaytotal
+                FROM accounthistorydata
+                WHERE isdeleted = false
+                AND recordtype = '1'
+                AND invoicenumber IN ({placeholders})
+            """, tuple(inv_nums))
+
+            by_invoice = {}
+            for row in cur_detail.fetchall():
+                by_invoice[str(row["invoicenumber"])] = {
+                    "total": money(row.get("total")),
+                    "partial": money(row.get("partialpaytotal")),
+                    "final": money(row.get("finalpaytotal")),
+                }
+
+            if len(inv_nums) == 1:
+                return {inv_nums[0]: money(batch_amount)}
+
+            final_sum = sum(by_invoice.get(inv, {}).get("final", 0) for inv in inv_nums)
+            if close_money(final_sum, batch_amount):
+                return {inv: by_invoice.get(inv, {}).get("final", 0) for inv in inv_nums}
+
+            partial_sum = sum(by_invoice.get(inv, {}).get("partial", 0) for inv in inv_nums)
+            if close_money(partial_sum, batch_amount):
+                return {inv: by_invoice.get(inv, {}).get("partial", 0) for inv in inv_nums}
+
+            total_sum = sum(by_invoice.get(inv, {}).get("total", 0) for inv in inv_nums)
+            if close_money(total_sum, batch_amount):
+                return {inv: by_invoice.get(inv, {}).get("total", 0) for inv in inv_nums}
+
+            return {}
+
         for r in rows:
             inv_nums = []
             is_generic_ar = False
@@ -176,6 +220,7 @@ def get_report_data(target_date=None):
             
             if not inv_nums: continue
             pay_method = (r.get("pay_method") or "N/A").strip()
+            ar_payment_splits = get_ar_payment_splits(inv_nums, abs(float(r.get("transaction_amount") or 0))) if is_generic_ar else {}
 
             for inv in inv_nums:
                 if inv in hidden_list: continue
@@ -226,6 +271,12 @@ def get_report_data(target_date=None):
                 if r.get("is_job_posted"):
                     if aggregated[inv]["grandtotal"] == 0:
                         aggregated[inv]["grandtotal"] = float(r["transaction_amount"] or 0)
+                elif is_generic_ar:
+                    split_amount = ar_payment_splits.get(inv)
+                    if split_amount is not None:
+                        aggregated[inv]["grandtotal"] += split_amount
+                    elif len(inv_nums) == 1:
+                        aggregated[inv]["grandtotal"] += abs(float(r["transaction_amount"] or 0))
                 else:
                     cur_detail.execute("SELECT SUM(totalpay) FROM tapeinvoicepayrecord WHERE invoicenumber = %s AND isdeleted = false", (inv,))
                     tip = float(cur_detail.fetchone()['sum'] or 0)

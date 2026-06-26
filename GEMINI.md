@@ -29,6 +29,10 @@
 - **Rule:** When querying dates in `tapeinvoicepayrecord` or `tapesalerecord`, ALWAYS use the `localdate` column instead of the `date` column.
 - **Why:** `date` is a reserved keyword in PostgreSQL and causes persistent syntax and type-casting errors across different database driver versions. The `localdate` column contains the exact same date value without syntax ambiguity.
 
+### 8. AR Batch Payment Attribution
+- **Rule:** For charge-account AR batch payments shown as `Payment(...)`, Paid Today must show each invoice's actual payment amount for the report date, not the full invoice total or lifetime paid amount. Use `accounthistorydata` batch totals with invoice-level `finalpaytotal`/`partialpaytotal` matching to split same-account batches.
+- **Why:** Same-account AR invoices can be posted or paid as a batch after older deposits or partial payments. Counting the invoice total makes today's cash report look like the full amount was collected today when only the remaining balance or partial payment was received.
+
 ## Agent Roles & Maintenance Plan
 
 When modifying this codebase, the active AI agent must adopt one of the specialized roles defined in the `.agents/` directory.
@@ -58,4 +62,3 @@ We have implemented a helper CLI script `agent_selector.py` to easily list roles
 ### 5. SysOps & Email Delivery Agent (Automation & Deployment Expert)
 - **Profile**: [.agents/5_sysops_email.md](file:///Users/onp/printsmith-report-app/.agents/5_sysops_email.md)
 - **Scope**: `app/main.py`, `app/services/email_service.py`, `app/services/settings_service.py`, `requirements.txt`
-
