@@ -26,6 +26,16 @@
 - [ ] T009 Add targeted tests for mandatory subsidiary exclusions
 - [ ] T010 Add or document focused Ready/In Progress verification
 
+## Phase 4: Ready Toggle Classification
+
+- [x] T011 Update Ready for Pickup query to include pending recent invoices where
+  `readytopickup` is true
+- [x] T012 Update In Progress query to exclude invoices where `readytopickup` is
+  true so sections do not overlap
+- [x] T013 Update `GEMINI.md`, spec, and plan with the ready-toggle rule
+
 ## Verification
 
 - [ ] Run `python -m pytest tests/test_batch_payment.py`
+- [ ] Verify a live or fixture invoice with `readytopickup = true` and non-ready
+  location appears in Ready for Pickup

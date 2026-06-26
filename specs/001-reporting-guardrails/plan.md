@@ -6,9 +6,10 @@
 
 ## Summary
 
-Capture the current PrintSmith Report App business rules in Spec Kit form so
-future changes are planned, testable, and traceable. This is a documentation and
-governance adoption step; it does not change runtime behavior.
+Capture and maintain the PrintSmith Report App business rules in Spec Kit form
+so reporting changes are planned, testable, and traceable. This update changes
+Ready/In Progress classification so the PrintSmith `readytopickup` toggle is
+treated as a ready signal alongside ready-like production locations.
 
 ## Technical Context
 
@@ -19,8 +20,8 @@ governance adoption step; it does not change runtime behavior.
 **Target Platform**: Local/server-hosted reporting web app  
 **Project Type**: Python web service with server-rendered UI  
 **Performance Goals**: Preserve current report responsiveness  
-**Constraints**: Do not weaken accounting, invoice filtering, or local-state
-guardrails  
+**Constraints**: Do not weaken accounting, invoice filtering, local-state
+guardrails, or the 10-day Ready for Pickup recency limit  
 **Scale/Scope**: Single internal reporting app
 
 ## Constitution Check
@@ -48,19 +49,23 @@ specs/
 
 ## Phase 0: Research
 
-No new runtime research is required for the baseline. Source material:
+Source material:
 
 - `GEMINI.md`
 - `.agents/`
 - Recent commits affecting `app/services/report_service.py`
 - Recent commit affecting `app/services/settings_service.py`
 - Existing `tests/test_batch_payment.py`
+- User clarification that enabling PrintSmith `readytopickup` must move pending
+  recent invoices into Ready for Pickup even when production location differs
 
 ## Phase 1: Design
 
-The baseline design maps current business rules to user stories, requirements,
-and success criteria. Future changes should add focused specs rather than
-expanding this baseline indefinitely.
+Ready for Pickup classification now uses one ready predicate:
+`COALESCE(ib.readytopickup, false) = true OR pl.name IN ('Ready for Pickup',
+'Ready for Delivery', 'Complete')`. In Progress applies the inverse ready-toggle
+guard and keeps the existing non-ready production location filter so the same
+pending invoice does not appear in both sections.
 
 ## Complexity Tracking
 

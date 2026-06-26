@@ -34,14 +34,15 @@ prepaid invoices.
 ### User Story 2 - Current Ready and In Progress Work (Priority: P1)
 
 As production staff, I need Ready for Pickup and In Progress lists to reflect
-the correct production location state and recent orders so that the dashboard
-matches the shop floor.
+the ready toggle, production location state, and recent orders so that the
+dashboard matches the shop floor.
 
 **Why this priority**: Incorrect status lists cause missed work and customer
 service confusion.
 
-**Independent Test**: Query representative invoices by location and ordered date,
-then verify the report places them in the expected section.
+**Independent Test**: Query representative invoices by ready toggle, production
+location, and ordered date, then verify the report places them in the expected
+section.
 
 **Acceptance Scenarios**:
 
@@ -49,8 +50,12 @@ then verify the report places them in the expected section.
    days, **When** the report is generated, **Then** it appears in Ready for Pickup.
 2. **Given** an invoice is older than 10 days, **When** the report is generated,
    **Then** it is excluded from Ready for Pickup.
-3. **Given** `readytopickup` disagrees with production location, **When** the
-   report is generated, **Then** location-based logic wins.
+3. **Given** `readytopickup` is enabled and the production location is not a
+   Ready location, **When** the report is generated, **Then** it appears in Ready
+   for Pickup and is excluded from In Progress.
+4. **Given** `readytopickup` is disabled and the production location is not a
+   Ready location, **When** the report is generated, **Then** it remains in In
+   Progress when it meets the other pending-work rules.
 
 ### User Story 3 - Subsidiary Account Exclusion (Priority: P2)
 
@@ -94,8 +99,9 @@ exclusion list.
 - **FR-004**: System MUST exclude fully prepaid previous-day deposits from Paid
   Today when no new money was collected today.
 - **FR-005**: System MUST use `localdate` for affected payment/sale date queries.
-- **FR-006**: System MUST use production location logic for Ready/In Progress
-  classification where that is the current business rule.
+- **FR-006**: System MUST classify pending invoices as Ready for Pickup when
+  either `readytopickup` is true or production location is ready-like, while
+  keeping non-ready pending invoices in In Progress.
 - **FR-007**: System MUST enforce mandatory subsidiary account exclusions even
   when local settings omit them.
 
@@ -115,8 +121,8 @@ exclusion list.
 - **SC-001**: Existing batch-payment regression test passes.
 - **SC-002**: Paid Today excludes previous-day fully prepaid invoices with no new
   money collected today.
-- **SC-003**: Ready/In Progress report sections match production location rules
-  for sampled live invoices.
+- **SC-003**: Ready/In Progress report sections match ready toggle and
+  production location rules for sampled live invoices.
 - **SC-004**: Mandatory subsidiary exclusions are present after every settings
   load path.
 

@@ -33,7 +33,7 @@ def get_report_data(target_date=None):
     """, (target_date,))
     new_today = cur.fetchall()
 
-    # 2. In Progress (Ready is false, Picked up is false, and it's not a new invoice today)
+    # 2. In Progress (not ready, still pending, and not a new invoice today)
     cur.execute("""
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
                pl.name as status,
@@ -46,6 +46,7 @@ def get_report_data(target_date=None):
         LEFT JOIN account a ON ib.account_id = a.id
         LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
         WHERE ib.onpendinglist = true 
+        AND COALESCE(ib.readytopickup, false) = false
         AND (pl.name IS NULL OR pl.name NOT IN ('Ready for Pickup', 'Ready for Delivery', 'Shipping', 'Complete'))
         AND DATE(ib.ordereddate) < %s
         AND ib.isdeleted = false AND ib.voided = false
@@ -67,7 +68,10 @@ def get_report_data(target_date=None):
         LEFT JOIN account a ON ib.account_id = a.id
         LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
         WHERE ib.onpendinglist = true
-        AND pl.name IN ('Ready for Pickup', 'Ready for Delivery', 'Complete')
+        AND (
+            COALESCE(ib.readytopickup, false) = true
+            OR pl.name IN ('Ready for Pickup', 'Ready for Delivery', 'Complete')
+        )
         AND DATE(ib.ordereddate) >= %s
         AND ib.isdeleted = false AND ib.voided = false
         ORDER BY ib.wanteddate ASC

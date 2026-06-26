@@ -7,8 +7,8 @@
 - **Why:** To strictly exclude Estimates/Quotes (which live in the `estimate` table).
 
 ### 2. Ready for Pickup
-- **Rule:** Only show invoices where `ordereddate` is within the **last 10 days**.
-- **Why:** To keep the list focused on recent orders and prevent clutter from old unclaimed jobs.
+- **Rule:** Show pending invoices where `ordereddate` is within the **last 10 days** when either the PrintSmith `readytopickup` toggle is enabled or the production location is `Ready for Pickup`, `Ready for Delivery`, or `Complete`.
+- **Why:** The ready toggle is an explicit shop-floor signal even when the production location has not been moved yet, while the 10-day limit keeps the list focused on recent orders and prevents clutter from old unclaimed jobs.
 
 ### 3. Payment Method Display
 - **Rule:** Filter out "Deposit" from the payment methods list.
