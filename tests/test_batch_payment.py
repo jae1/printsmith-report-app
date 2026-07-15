@@ -51,5 +51,24 @@ class TestBatchPaymentFix(unittest.TestCase):
         self.assertIn('56276', found)
         self.assertEqual(found['56276'], 1668.52)
 
+    def test_linked_plain_payment_splits_same_account_posting_batch(self):
+        data = get_report_data(date(2026, 7, 15))
+        found = {
+            item['invoicenumber']: round(float(item['grandtotal']), 2)
+            for item in data['paid']
+        }
+
+        self.assertIn('56762', found)
+        self.assertIn('56896', found)
+        self.assertEqual(found['56762'], 355.95)
+        self.assertEqual(found['56896'], 199.99)
+        self.assertEqual(round(found['56762'] + found['56896'], 2), 555.94)
+
+    def test_previous_day_prepaid_invoice_is_not_paid_today(self):
+        data = get_report_data(date(2026, 6, 18))
+        paid_invoices = {item['invoicenumber'] for item in data['paid']}
+
+        self.assertNotIn('56673', paid_invoices)
+
 if __name__ == '__main__':
     unittest.main()

@@ -32,10 +32,19 @@
   `readytopickup` is true
 - [x] T012 Update In Progress query to exclude invoices where `readytopickup` is
   true so sections do not overlap
-- [x] T013 Update `GEMINI.md`, spec, and plan with the ready-toggle rule
+- [x] T013 Update the protected-rule register, spec, and plan with the ready-toggle rule
 
 ## Verification
 
 - [ ] Run `python -m pytest tests/test_batch_payment.py`
 - [ ] Verify a live or fixture invoice with `readytopickup = true` and non-ready
   location appears in Ready for Pickup
+
+## Phase 5: Protected Rule Register
+
+- [x] T014 Consolidate current reporting, accounting, state, receipt, UI/export,
+  and scheduler/security rules in `PROTECTED_RULES.md`
+- [x] T015 Require explicit owner authorization for a specifically named rule
+  change in `AGENTS.md` and the Constitution
+- [x] T016 Add the protected-rule workflow to the baseline spec and plan
+- [x] T017 Route every specialist agent profile through the protected register

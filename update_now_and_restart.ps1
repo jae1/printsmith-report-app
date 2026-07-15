@@ -1,41 +1,21 @@
 param(
-    [string]$Branch = "main",
-    [int]$Port = 8000
+    [string]$TaskName = "PrintSmith Report Server Watchdog"
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$UpdateRequestFile = Join-Path $RepoRoot ".server_update_requested"
+$Task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 
-Push-Location $RepoRoot
-try {
-    Write-Host "Stopping any server currently using port $Port..."
-    $Connections = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
-    foreach ($Connection in $Connections) {
-        if ($Connection.OwningProcess) {
-            Stop-Process -Id $Connection.OwningProcess -Force
-        }
-    }
-
-    Write-Host "Updating from origin/$Branch..."
-    git fetch origin $Branch
-    if ($LASTEXITCODE -ne 0) { throw "git fetch failed" }
-
-    git reset --hard "origin/$Branch"
-    if ($LASTEXITCODE -ne 0) { throw "git reset failed" }
-
-    if (-not (Test-Path "venv\Scripts\python.exe")) {
-        Write-Host "Creating virtual environment..."
-        python -m venv venv
-        if ($LASTEXITCODE -ne 0) { throw "venv creation failed" }
-    }
-
-    Write-Host "Installing dependencies..."
-    .\venv\Scripts\python.exe -m pip install -r requirements.txt
-    if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
-
-    Write-Host "Starting server on http://localhost:$Port ..."
-    .\venv\Scripts\python.exe -m uvicorn main:app --host 0.0.0.0 --port $Port
+if (-not $Task) {
+    throw "Scheduled watchdog '$TaskName' is not installed. Run .\run_server_auto_update.ps1 once from an Administrator PowerShell window."
 }
-finally {
-    Pop-Location
+
+Set-Content -Path $UpdateRequestFile -Value (Get-Date -Format "o")
+Write-Host "Requested an immediate safe update check from watchdog '$TaskName'."
+
+if ($Task.State -ne "Running") {
+    Start-ScheduledTask -TaskName $TaskName
 }
+Write-Host "The existing report server stays online while the watchdog checks and prepares the update."
+Write-Host "Review server_auto_update.log for progress."

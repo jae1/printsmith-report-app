@@ -9,7 +9,9 @@
 Capture and maintain the PrintSmith Report App business rules in Spec Kit form
 so reporting changes are planned, testable, and traceable. This update changes
 Ready/In Progress classification so the PrintSmith `readytopickup` toggle is
-treated as a ready signal alongside ready-like production locations.
+treated as a ready signal alongside ready-like production locations. The
+baseline also establishes `PROTECTED_RULES.md` as the canonical protected-rule register
+and requires explicit owner authorization for any named rule change.
 
 ## Technical Context
 
@@ -21,7 +23,8 @@ treated as a ready signal alongside ready-like production locations.
 **Project Type**: Python web service with server-rendered UI  
 **Performance Goals**: Preserve current report responsiveness  
 **Constraints**: Do not weaken accounting, invoice filtering, local-state
-guardrails, or the 10-day Ready for Pickup recency limit  
+guardrails, the 10-day Ready for Pickup recency limit, or any protected rule
+without explicit owner authorization for that rule
 **Scale/Scope**: Single internal reporting app
 
 ## Constitution Check
@@ -51,7 +54,7 @@ specs/
 
 Source material:
 
-- `GEMINI.md`
+- `PROTECTED_RULES.md`
 - `.agents/`
 - Recent commits affecting `app/services/report_service.py`
 - Recent commit affecting `app/services/settings_service.py`
@@ -66,6 +69,11 @@ Ready for Pickup classification now uses one ready predicate:
 'Ready for Delivery', 'Complete')`. In Progress applies the inverse ready-toggle
 guard and keeps the existing non-ready production location filter so the same
 pending invoice does not appear in both sections.
+
+Protected-rule governance is enforced at every repository entry point:
+`AGENTS.md` requires reading `PROTECTED_RULES.md`; the Constitution limits rule-change
+authority to explicit owner instructions for a named rule; feature specs must
+trace any authorized change; and all specialist profiles inherit the same gate.
 
 ## Complexity Tracking
 

@@ -7,7 +7,7 @@ AGENT_MAPPING = {
     "coordinator": {
         "name": "Coordinator Agent",
         "file": ".agents/1_coordinator.md",
-        "patterns": ["GEMINI.md", "README.md", "tests/"]
+        "patterns": ["PROTECTED_RULES.md", "README.md", "tests/"]
     },
     "sql_logic": {
         "name": "SQL & Report Logic Agent",
@@ -27,7 +27,18 @@ AGENT_MAPPING = {
     "sysops": {
         "name": "SysOps & Email Delivery Agent",
         "file": ".agents/5_sysops_email.md",
-        "patterns": ["main.py", "email_service.py", "settings_service.py", "app_settings.json", "requirements.txt"]
+        "patterns": [
+            "main.py",
+            "email_service.py",
+            "settings_service.py",
+            "app_settings.json",
+            "requirements.txt",
+            "run_server_auto_update.ps1",
+            "update_now_and_restart.ps1",
+            "setup_and_run.bat",
+            "WINDOWS_SERVER.md",
+            "windows-server-watchdog",
+        ]
     }
 }
 

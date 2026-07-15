@@ -2,7 +2,7 @@
 
 **Feature Branch**: `002-ar-batch-partial-paid-today`  
 **Created**: 2026-06-26  
-**Status**: In progress  
+**Status**: Complete
 **Input**: AR charge-account invoices can be posted as a same-account batch after
 older deposits or partial payments. Paid Today must show only the amount paid
 today, not each invoice full amount.
@@ -32,11 +32,18 @@ invoice totals differ from the amount paid on the report date.
 3. **Given** multiple invoices from the same charge account are posted together,
    **When** the batch is parsed from `Payment(...)`, **Then** each invoice amount
    is attributed independently.
+4. **Given** multiple same-account invoices are posted and paid together, **When**
+   PrintSmith stores a plain `Payment` row against only one invoice, **Then** Paid
+   Today shows every invoice whose posted payment amounts exactly reconcile to
+   the combined payment.
 
 ## Edge Cases
 
 - Batch payment rows can have no `invoicenumber` and list invoices in the
   `Payment(...)` record name.
+- Batch payment rows can also be named plain `Payment` and carry only the last
+  invoice number even though the amount covers several immediately preceding
+  same-account posted invoices.
 - Payment detail tables do not carry dates, so they cannot by themselves answer
   "paid today".
 - A single invoice can appear in separate AR payment batches on different dates.
@@ -57,6 +64,14 @@ invoice totals differ from the amount paid on the report date.
   inferred, the system MUST use the batch row amount itself.
 - **FR-006**: Prior deposits or partial payments MUST remain available for
   balance calculation but MUST NOT be used as today's Paid Today amount.
+- **FR-007**: For a plain `Payment` row linked to one invoice, the system MUST
+  attribute it to multiple posted invoices only when they share the same
+  normalized account/contact identity, occur after that customer's preceding
+  payment row on the report date, include the linked invoice, and their
+  invoice-level payment fields exactly reconcile to the batch total. This
+  identity rule MUST tolerate duplicate PrintSmith account/contact row IDs.
+- **FR-008**: If plain-payment batch reconciliation fails, the system MUST retain
+  the existing single-invoice behavior and MUST NOT infer a split.
 
 ### Key Entities
 
@@ -75,3 +90,7 @@ invoice totals differ from the amount paid on the report date.
 - **SC-001**: Invoice `56276` on 2026-06-16 shows `20.62`, not `1689.14`.
 - **SC-002**: Invoice `56276` on 2026-06-22 shows `1668.52`, not `1689.14`.
 - **SC-003**: Existing 2026-06-16 batch attribution regression remains passing.
+- **SC-004**: Invoices `56762` and `56896` on 2026-07-15 show `355.95` and
+  `199.99` respectively, and their displayed sum equals the `555.94` payment.
+- **SC-005**: Existing no-new-money regression invoice `56673` remains excluded
+  from Paid Today on 2026-06-18.

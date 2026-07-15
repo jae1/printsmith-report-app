@@ -3,7 +3,8 @@
 **Feature Branch**: `001-reporting-guardrails`  
 **Created**: 2026-06-26  
 **Status**: Active baseline  
-**Input**: Current production behavior and recent fixes documented in `GEMINI.md`
+**Input**: Current production behavior and recent fixes documented in
+`PROTECTED_RULES.md`
 and git history.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -79,6 +80,32 @@ exclusion list.
    settings are loaded, **Then** those accounts are preserved alongside the
    mandatory subsidiaries.
 
+### User Story 4 - Owner-Controlled Rule Protection (Priority: P1)
+
+As the repository owner, I need every current business and operational rule
+written in one protected register so future fixes and edits cannot change those
+rules unless I explicitly authorize the specific rule change.
+
+**Why this priority**: A fix for one edge case must not silently regress an
+older accounting, classification, workflow, presentation, or safety rule.
+
+**Independent Test**: Start from `AGENTS.md` as a new agent would and verify it
+requires reading `PROTECTED_RULES.md`, explicit owner authorization for a named rule
+change, synchronized Spec Kit updates, and regression verification.
+
+**Acceptance Scenarios**:
+
+1. **Given** an agent is asked to fix, refactor, optimize, migrate, or add a
+   feature, **When** the implementation touches a protected rule without an
+   explicit request to change that rule, **Then** the agent preserves the rule
+   and reports any conflict.
+2. **Given** the owner explicitly authorizes one named rule change, **When** the
+   agent implements it, **Then** only that rule may change and the register,
+   Constitution, relevant spec/plan/tasks, and regression coverage are updated.
+3. **Given** an agent opens the repository instructions, **When** it follows the
+   required workflow, **Then** it reads the complete protected-rule register
+   before changing production behavior.
+
 ## Edge Cases
 
 - Batch payments may have multiple records that must not be double-counted.
@@ -104,6 +131,13 @@ exclusion list.
   keeping non-ready pending invoices in In Progress.
 - **FR-007**: System MUST enforce mandatory subsidiary account exclusions even
   when local settings omit them.
+- **FR-008**: `PROTECTED_RULES.md` MUST remain the canonical protected-rule register for
+  reporting, accounting, runtime state, receipt processing, UI/export, and
+  scheduler/security guardrails.
+- **FR-009**: Agents MUST NOT alter a protected rule without explicit owner
+  authorization naming that rule; generic task authorization is insufficient.
+- **FR-010**: An authorized protected-rule change MUST update the register,
+  Constitution, relevant spec/plan/tasks, and regression coverage together.
 
 ### Key Entities
 
@@ -125,6 +159,8 @@ exclusion list.
   production location rules for sampled live invoices.
 - **SC-004**: Mandatory subsidiary exclusions are present after every settings
   load path.
+- **SC-005**: Repository entry instructions and every specialist profile point
+  agents to the protected register and owner-authorization gate.
 
 ## Assumptions
 
@@ -132,3 +168,5 @@ exclusion list.
 - Local JSON files are deployment state, not canonical business policy.
 - This baseline documents existing behavior and recent fixes; future feature
   work should create separate numbered specs.
+- The repository owner is the sole authority who may authorize changing a
+  protected rule, and authorization is limited to the specifically named rule.

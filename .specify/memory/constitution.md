@@ -6,7 +6,7 @@
 
 Daily report totals, paid-today rows, and account exclusions must reflect actual
 new money and PrintSmith transaction semantics. Use the authoritative payment
-tables named in `GEMINI.md`, and do not replace them with easier aggregate
+tables named in `PROTECTED_RULES.md`, and do not replace them with easier aggregate
 queries unless a spec proves equivalent behavior with tests.
 
 ### II. Invoice-Only Reporting
@@ -19,7 +19,7 @@ be specified as a separate workflow with explicit acceptance criteria.
 
 Every non-trivial behavior change must trace to a feature spec under `specs/`.
 The spec must name the relevant user scenario, business rule, data entities, and
-independent verification path. `GEMINI.md` remains the operational rule summary;
+independent verification path. `PROTECTED_RULES.md` remains the operational rule summary;
 Spec Kit artifacts explain the change history and implementation plan.
 
 ### IV. Safe Operational State
@@ -36,6 +36,15 @@ logic, expense parsing, UI/export, and sysops/email work each have separate
 guardrails; cross-cutting changes require the coordinator role to reconcile
 them.
 
+### VI. Owner-Controlled Protected Rules
+
+`PROTECTED_RULES.md` is the canonical protected-rule register. No agent may weaken,
+remove, bypass, reinterpret, or replace a protected rule unless the repository
+owner explicitly authorizes a change to that specific rule. General permission
+to fix, refactor, optimize, migrate, or add a feature does not authorize a rule
+change. Permission for one rule does not extend to another. Conflicting work
+must stop at the conflict while existing protected behavior remains intact.
+
 ## Development Workflow
 
 Feature work follows this sequence:
@@ -44,7 +53,11 @@ Feature work follows this sequence:
 2. Plan the technical approach in `plan.md`, including Constitution checks.
 3. Break implementation into verifiable tasks in `tasks.md`.
 4. Implement tasks in order, keeping each user story independently testable.
-5. Update `GEMINI.md` only when an operational rule changes or is clarified.
+5. Update `PROTECTED_RULES.md` only when an operational rule changes or is clarified.
+
+An owner-authorized protected-rule change must identify the affected rule and
+update the rule register, Constitution, relevant spec/plan/tasks, and regression
+coverage together. Otherwise, implementation must preserve every protected rule.
 
 Hotfixes are allowed for urgent production corrections, but the corresponding
 spec and plan must be backfilled before the work is considered complete.
@@ -61,7 +74,8 @@ spec and plan must be backfilled before the work is considered complete.
 ## Governance
 
 This constitution supersedes informal implementation preferences when behavior
-is ambiguous. Amendments require updating this file, `GEMINI.md` when relevant,
-and any active specs whose acceptance criteria are affected.
+is ambiguous. Protected rules may be amended only with explicit owner
+authorization for the named rule. Amendments require updating this file,
+`PROTECTED_RULES.md`, affected specs/plans/tasks, and regression coverage together.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-26 | **Last Amended**: 2026-06-26
+**Version**: 1.1.0 | **Ratified**: 2026-06-26 | **Last Amended**: 2026-07-15

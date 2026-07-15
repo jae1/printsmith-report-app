@@ -105,9 +105,11 @@ def get_report_data(target_date=None):
     # 5. Paid Today (Aggregate direct payments + Parse consolidated AR payments)
     cur.execute(f"""
         SELECT 
+            ah.id as history_id,
             ah.invoicenumber, 
             ah.name as record_name,
             ah.recordtype,
+            ah.posteddate as history_posteddate,
             COALESCE(ah.finalpaypaymethod, ah.partialpaypaymethod, tdr.paymode) as pay_method,
             CASE 
                 WHEN ah.recordtype = '1' THEN ah.total 
@@ -118,6 +120,7 @@ def get_report_data(target_date=None):
             ib.wanteddate,
             ib.offpendingdate,
             ib.grandtotal,
+            ib.account_id,
             TRIM(CONCAT(p_con.firstname, ' ', p_con.lastname)) as contact_name,
             TRIM(a.title) as account_name,
             -- Indicators for aggregation
@@ -211,11 +214,82 @@ def get_report_data(target_date=None):
 
             return {}
 
+        def history_position(row):
+            return (row.get("history_posteddate"), int(row.get("history_id") or 0))
+
+        def customer_key(row):
+            account_name = str(row.get("account_name") or "").strip().casefold()
+            contact_name = str(row.get("contact_name") or "").strip().casefold()
+            if account_name:
+                return ("display", account_name, contact_name)
+            if row.get("account_id") is not None:
+                return ("id", row["account_id"])
+            return None
+
+        def get_linked_plain_payment_splits(payment_row):
+            """Recognize a PrintSmith batch stored as plain Payment on one invoice."""
+            if str(payment_row.get("recordtype")) != "2":
+                return {}
+            if str(payment_row.get("record_name") or "").strip().lower() != "payment":
+                return {}
+            if not payment_row.get("invoicenumber"):
+                return {}
+
+            payment_customer = customer_key(payment_row)
+            if payment_customer is None:
+                return {}
+            payment_position = history_position(payment_row)
+            prior_payment_positions = [
+                history_position(row)
+                for row in rows
+                if str(row.get("recordtype")) == "2"
+                and customer_key(row) == payment_customer
+                and history_position(row) < payment_position
+            ]
+            lower_bound = max(prior_payment_positions) if prior_payment_positions else None
+            payment_method = str(payment_row.get("pay_method") or "").strip()
+
+            candidates = []
+            for row in rows:
+                if str(row.get("recordtype")) != "1" or customer_key(row) != payment_customer:
+                    continue
+
+                position = history_position(row)
+                if position > payment_position or (lower_bound and position <= lower_bound):
+                    continue
+
+                candidate_method = str(row.get("pay_method") or "").strip()
+                if payment_method and candidate_method and candidate_method != payment_method:
+                    continue
+
+                inv = str(row.get("invoicenumber") or "").strip()
+                if inv and inv not in candidates:
+                    candidates.append(inv)
+
+            linked_invoice = str(payment_row["invoicenumber"])
+            if len(candidates) < 2 or linked_invoice not in candidates:
+                return {}
+
+            splits = get_ar_payment_splits(
+                candidates,
+                abs(float(payment_row.get("transaction_amount") or 0)),
+            )
+            if len(splits) != len(candidates):
+                return {}
+            return splits
+
         for r in rows:
             inv_nums = []
             is_generic_ar = False
+            is_linked_batch = False
+            ar_payment_splits = {}
             if r.get("invoicenumber"):
-                inv_nums.append(str(r["invoicenumber"]))
+                ar_payment_splits = get_linked_plain_payment_splits(r)
+                if ar_payment_splits:
+                    inv_nums = list(ar_payment_splits)
+                    is_linked_batch = True
+                else:
+                    inv_nums.append(str(r["invoicenumber"]))
             else:
                 match = re.search(r"Payment\((.*?)\)", str(r.get("record_name") or ""))
                 if match:
@@ -224,7 +298,12 @@ def get_report_data(target_date=None):
             
             if not inv_nums: continue
             pay_method = (r.get("pay_method") or "N/A").strip()
-            ar_payment_splits = get_ar_payment_splits(inv_nums, abs(float(r.get("transaction_amount") or 0))) if is_generic_ar else {}
+            if is_generic_ar:
+                ar_payment_splits = get_ar_payment_splits(
+                    inv_nums,
+                    abs(float(r.get("transaction_amount") or 0)),
+                )
+            is_split_batch = is_generic_ar or is_linked_batch
 
             for inv in inv_nums:
                 if inv in hidden_list: continue
@@ -275,7 +354,7 @@ def get_report_data(target_date=None):
                 if r.get("is_job_posted"):
                     if aggregated[inv]["grandtotal"] == 0:
                         aggregated[inv]["grandtotal"] = float(r["transaction_amount"] or 0)
-                elif is_generic_ar:
+                elif is_split_batch:
                     split_amount = ar_payment_splits.get(inv)
                     if split_amount is not None:
                         aggregated[inv]["grandtotal"] += split_amount
