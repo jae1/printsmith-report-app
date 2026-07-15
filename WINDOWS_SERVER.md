@@ -1,46 +1,83 @@
 # Windows Server Operation
 
 The Windows server is an execution-only machine. Development happens elsewhere,
-and this machine should force-sync to `origin/main`.
+and this machine force-syncs to `origin/main` while preserving ignored runtime
+JSON files.
 
-## Automatic Updates
+## One-Time Automatic Setup
 
-Run this from PowerShell in the repository folder:
+1. Sign in using the Windows account that already has GitHub access for this
+   repository.
+2. Right-click **Windows PowerShell** and choose **Run as administrator**.
+3. Change to the repository folder.
+4. Run:
 
 ```powershell
 .\run_server_auto_update.ps1
 ```
 
-Default behavior:
+5. Enter that Windows account's password when prompted. Windows Task Scheduler
+   stores the credential; the script does not save it in the repository.
 
-- Starts the app on `0.0.0.0:8000`
-- Checks `origin/main` every 10 minutes
-- If a new commit exists, stops the server, runs `git reset --hard origin/main`,
-  installs dependencies, and starts the server again
-- Writes logs to `server_auto_update.log`
+The setup creates and starts a task named `PrintSmith Report Server Watchdog`.
+The temporary administrator window can close after setup finishes.
 
-To use a different interval:
+If the Windows password changes or the task needs to be rebuilt, run:
 
 ```powershell
-.\run_server_auto_update.ps1 -CheckIntervalSeconds 300
+.\run_server_auto_update.ps1 -ReinstallScheduledTask
 ```
 
-## Manual Immediate Update
+## Always-On Behavior
 
-When you do not want to wait for the next automatic check, run:
+The scheduled watchdog:
+
+- Starts at Windows startup and user logon
+- Runs whether or not a desktop window remains open
+- Has no execution time limit
+- Is restarted by Task Scheduler every two minutes if the watchdog fails
+- Checks the report server every 10 seconds and restarts it after a crash
+- Adopts an existing server already listening on port `8000`
+- Checks `origin/main` every 10 minutes
+- Keeps the working server online while Git and dependencies are prepared
+- Restarts onto an update only after preparation succeeds
+- Retries failed updates after two minutes
+- Writes watchdog activity to `server_auto_update.log`
+
+To use different intervals during initial installation:
+
+```powershell
+.\run_server_auto_update.ps1 -CheckIntervalSeconds 300 -HealthCheckIntervalSeconds 10
+```
+
+## Check for an Update Immediately
+
+After the watchdog is installed, run:
 
 ```powershell
 .\update_now_and_restart.ps1
 ```
 
-This stops anything listening on port `8000`, force-syncs to `origin/main`,
-installs dependencies, and starts the server.
+This signals the running watchdog to check immediately. The existing report
+server remains online while the watchdog checks and prepares the update.
 
-## Notes
+## Verify It on Windows
 
-- Any local code changes on the Windows server will be overwritten.
-- Local runtime JSON files such as `app_settings.json`, `daily_spending.json`,
-  and `hidden_invoices.json` are ignored by git and are not overwritten by
-  `git reset --hard`.
-- Keep the PowerShell window open while the server is running, unless this is
-  later registered as a Windows Scheduled Task or service.
+```powershell
+Get-ScheduledTask -TaskName "PrintSmith Report Server Watchdog"
+Get-ScheduledTaskInfo -TaskName "PrintSmith Report Server Watchdog"
+Get-Content .\server_auto_update.log -Tail 50
+```
+
+The task state should be `Running`. After a controlled reboot, confirm that
+`http://localhost:8000` loads without manually opening PowerShell.
+
+## Important Notes
+
+- The scheduled Windows account must have working GitHub SSH access without an
+  interactive passphrase prompt. Test with `git fetch origin main` while signed
+  in as that account.
+- Any local code changes on the Windows server are overwritten by deployment.
+- `app_settings.json`, `daily_spending.json`, `hidden_invoices.json`, logs, and
+  other ignored runtime files are not overwritten by `git reset --hard`.
+- Do not run a second copy of the server manually; the watchdog owns port `8000`.

@@ -1,34 +1,20 @@
 @echo off
-:loop
-cls
+setlocal
+
 echo ======================================================
-echo  PrintSmith Report Server - Force Update Mode
+echo  PrintSmith Report Server - Scheduled Watchdog Setup
 echo ======================================================
 echo.
-echo [1/2] Syncing with GitHub (Force Update)...
-
-:: Fetch the latest changes
-git fetch origin main
-:: Force reset to match the remote branch (overwrites any local changes)
-git reset --hard origin/main
-
+echo This launcher delegates startup and updates to Windows Task Scheduler.
+echo The first setup must run from an Administrator window.
 echo.
-if not exist "venv" (
-    echo [*] Creating virtual environment...
-    python -m venv venv
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0run_server_auto_update.ps1"
+
+if errorlevel 1 (
+    echo.
+    echo Setup or startup failed. Review the message above.
+    pause
 )
 
-echo.
-echo [2/2] Starting Server...
-echo Access at: http://localhost:8000
-echo.
-echo (Press Ctrl+C and then 'N' to update and restart)
-echo ------------------------------------------------------
-call venv\Scripts\activate
-pip install -r requirements.txt
-python main.py
-
-echo.
-echo Server stopped. Checking for updates and restarting in 5 seconds...
-timeout /t 5
-goto loop
+endlocal

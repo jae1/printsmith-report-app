@@ -9,7 +9,12 @@ payments/deposits.
 
 Change Paid Today attribution so generic AR batch rows are split using
 invoice-level payment fields from account history instead of lifetime paid totals
-from payment detail tables. Keep detail tables for balance calculation only.
+from payment detail tables. Also recognize plain `Payment` rows that PrintSmith
+links to only one invoice in a multi-invoice posting sequence, but only when the
+same normalized account/contact identity and invoice payment fields exactly
+reconcile to the combined amount. Normalized display identity is necessary
+because PrintSmith can duplicate account and contact row IDs for the same customer.
+Keep detail tables for balance calculation only.
 
 ## Technical Context
 
@@ -21,8 +26,10 @@ from payment detail tables. Keep detail tables for balance calculation only.
 **Project Type**: Python web service  
 **Performance Goals**: Avoid expensive per-row scans beyond the listed invoices
 in each AR batch  
-**Constraints**: Preserve invoice-only filtering and existing batch attribution  
-**Scale/Scope**: Paid Today section only
+**Constraints**: Preserve `PROTECTED_RULES.md`, invoice-only filtering, and
+existing batch attribution
+**Scale/Scope**: Paid Today section only; generic `Payment(...)` batches and
+exactly reconciled plain `Payment` posting batches
 
 ## Constitution Check
 

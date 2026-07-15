@@ -6,3 +6,4 @@ daily_spending.json
 hidden_invoices.json
 .DS_Store
 server_auto_update.log
+.server_update_requested

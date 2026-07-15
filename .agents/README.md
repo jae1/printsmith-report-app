@@ -3,13 +3,21 @@
 Welcome! This directory defines the specialized agent system for maintaining the PrintSmith Report App. 
 When an AI assistant (like Gemini or Antigravity) starts working on this project, it must read the configuration here to adopt the correct role.
 
+## Protected Rules
+
+Every agent must read `PROTECTED_RULES.md` in full before changing production behavior.
+Protected rules may not be changed, weakened, removed, bypassed, reinterpreted,
+or replaced unless the repository owner explicitly authorizes changing that
+specific rule. General permission to fix or edit the app is not authorization
+to alter a protected rule.
+
 ## Active Agents
 
 Select the agent profile corresponding to your current task:
 
 1. **Coordinator Agent** (Guardrails & Verification)
    - [Coordinator Profile](file:///Users/onp/printsmith-report-app/.agents/1_coordinator.md)
-   - Scope: [GEMINI.md](file:///Users/onp/printsmith-report-app/GEMINI.md), `tests/`
+   - Scope: `PROTECTED_RULES.md`, `tests/`
 2. **SQL & Report Logic Agent** (Core Database Query Expert)
    - [SQL & Report Logic Profile](file:///Users/onp/printsmith-report-app/.agents/2_sql_report_logic.md)
    - Scope: [app/services/report_service.py](file:///Users/onp/printsmith-report-app/app/services/report_service.py), [app/services/hide_service.py](file:///Users/onp/printsmith-report-app/app/services/hide_service.py), [app/db/database.py](file:///Users/onp/printsmith-report-app/app/db/database.py)
