@@ -14,6 +14,9 @@ links to only one invoice in a multi-invoice posting sequence, but only when the
 same normalized account/contact identity and invoice payment fields exactly
 reconcile to the combined amount. Normalized display identity is necessary
 because PrintSmith can duplicate account and contact row IDs for the same customer.
+Also recognize multiple plain payment rows as one batch only when the customer
+identity, exact history timestamp, linked invoices, and combined posted/payment
+totals all reconcile.
 Keep detail tables for balance calculation only.
 
 ## Technical Context
@@ -29,7 +32,7 @@ in each AR batch
 **Constraints**: Preserve `PROTECTED_RULES.md`, invoice-only filtering, and
 existing batch attribution
 **Scale/Scope**: Paid Today section only; generic `Payment(...)` batches and
-exactly reconciled plain `Payment` posting batches
+exactly reconciled single- or multi-row plain `Payment` posting batches
 
 ## Constitution Check
 

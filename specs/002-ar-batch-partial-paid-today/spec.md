@@ -36,6 +36,10 @@ invoice totals differ from the amount paid on the report date.
    PrintSmith stores a plain `Payment` row against only one invoice, **Then** Paid
    Today shows every invoice whose posted payment amounts exactly reconcile to
    the combined payment.
+5. **Given** one same-account posting batch is settled with multiple payment
+   methods, **When** PrintSmith stores multiple plain `Payment` rows against only
+   some of the invoices, **Then** Paid Today includes every posted invoice when
+   the shared timestamp and combined amounts exactly reconcile.
 
 ## Edge Cases
 
@@ -44,6 +48,9 @@ invoice totals differ from the amount paid on the report date.
 - Batch payment rows can also be named plain `Payment` and carry only the last
   invoice number even though the amount covers several immediately preceding
   same-account posted invoices.
+- A single posting batch can contain multiple plain `Payment` rows with different
+  methods, and an invoice paid within the batch may have no payment row linked
+  directly to it.
 - Payment detail tables do not carry dates, so they cannot by themselves answer
   "paid today".
 - A single invoice can appear in separate AR payment batches on different dates.
@@ -72,6 +79,12 @@ invoice totals differ from the amount paid on the report date.
   identity rule MUST tolerate duplicate PrintSmith account/contact row IDs.
 - **FR-008**: If plain-payment batch reconciliation fails, the system MUST retain
   the existing single-invoice behavior and MUST NOT infer a split.
+- **FR-009**: Multiple plain `Payment` rows MUST be treated as one posting batch
+  only when they share the exact account/contact identity and history timestamp,
+  every linked invoice is among the posted invoices, and the combined payment
+  total exactly equals the sum of the positive posted invoice amounts.
+- **FR-010**: A payment row consumed by an exactly reconciled multi-payment batch
+  MUST NOT also be processed independently.
 
 ### Key Entities
 
@@ -82,6 +95,9 @@ invoice totals differ from the amount paid on the report date.
 - **Payment Detail Records**: `tapeinvoicepayrecord`,
   `tapedepositappliedrecord`, and `tapesalerecord`, used for lifetime balance
   context only.
+- **Multi-Method Posting Batch**: Same-customer recordtype `1` and plain
+  recordtype `2` rows sharing one exact `posteddate`, where the posted and paid
+  totals reconcile.
 
 ## Success Criteria *(mandatory)*
 
@@ -94,3 +110,6 @@ invoice totals differ from the amount paid on the report date.
   `199.99` respectively, and their displayed sum equals the `555.94` payment.
 - **SC-005**: Existing no-new-money regression invoice `56673` remains excluded
   from Paid Today on 2026-06-18.
+- **SC-006**: Invoices `56858`, `56954`, and `56974` on 2026-07-24 show
+  `6658.69`, `665.44`, and `4568.93`, and their displayed sum equals the
+  combined `11893.06` card/check payment.

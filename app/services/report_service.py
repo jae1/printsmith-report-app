@@ -278,19 +278,96 @@ def get_report_data(target_date=None):
                 return {}
             return splits
 
+        def get_linked_multi_payment_batches():
+            """Recognize one posting batch represented by multiple plain payments."""
+            payment_groups = {}
+            for row in rows:
+                if str(row.get("recordtype")) != "2":
+                    continue
+                if str(row.get("record_name") or "").strip().lower() != "payment":
+                    continue
+                if not row.get("invoicenumber") or customer_key(row) is None:
+                    continue
+
+                group_key = (customer_key(row), row.get("history_posteddate"))
+                payment_groups.setdefault(group_key, []).append(row)
+
+            batches = {}
+            member_history_ids = set()
+            for (group_customer, group_posteddate), payment_rows in payment_groups.items():
+                if len(payment_rows) < 2:
+                    continue
+
+                posted_rows = [
+                    row
+                    for row in rows
+                    if str(row.get("recordtype")) == "1"
+                    and customer_key(row) == group_customer
+                    and row.get("history_posteddate") == group_posteddate
+                    and row.get("invoicenumber")
+                ]
+
+                posted_amounts = {}
+                for row in posted_rows:
+                    inv = str(row["invoicenumber"])
+                    if inv in posted_amounts:
+                        posted_amounts = {}
+                        break
+                    posted_amounts[inv] = money(row.get("transaction_amount"))
+
+                linked_invoices = {
+                    str(row["invoicenumber"])
+                    for row in payment_rows
+                }
+                payment_total = sum(
+                    money(row.get("transaction_amount"))
+                    for row in payment_rows
+                )
+                posted_total = sum(posted_amounts.values())
+
+                if (
+                    len(posted_amounts) < 2
+                    or not linked_invoices.issubset(posted_amounts)
+                    or any(amount <= 0 for amount in posted_amounts.values())
+                    or not close_money(posted_total, payment_total)
+                ):
+                    continue
+
+                leader = max(payment_rows, key=history_position)
+                leader_id = int(leader.get("history_id") or 0)
+                batches[leader_id] = posted_amounts
+                member_history_ids.update(
+                    int(row.get("history_id") or 0)
+                    for row in payment_rows
+                )
+
+            return batches, member_history_ids
+
+        multi_payment_batches, multi_payment_members = get_linked_multi_payment_batches()
+
         for r in rows:
             inv_nums = []
             is_generic_ar = False
             is_linked_batch = False
+            is_multi_payment_batch = False
             ar_payment_splits = {}
-            if r.get("invoicenumber"):
+            history_id = int(r.get("history_id") or 0)
+            if history_id in multi_payment_members:
+                ar_payment_splits = multi_payment_batches.get(history_id, {})
+                if not ar_payment_splits:
+                    continue
+                inv_nums = list(ar_payment_splits)
+                is_linked_batch = True
+                is_multi_payment_batch = True
+
+            if not inv_nums and r.get("invoicenumber"):
                 ar_payment_splits = get_linked_plain_payment_splits(r)
                 if ar_payment_splits:
                     inv_nums = list(ar_payment_splits)
                     is_linked_batch = True
                 else:
                     inv_nums.append(str(r["invoicenumber"]))
-            else:
+            elif not inv_nums:
                 match = re.search(r"Payment\((.*?)\)", str(r.get("record_name") or ""))
                 if match:
                     inv_nums = [n.strip() for n in match.group(1).split(",")]
@@ -348,7 +425,7 @@ def get_report_data(target_date=None):
                 if r.get("is_deposit"): aggregated[inv]["is_deposit"] = 1
                 if r.get("is_payment"): aggregated[inv]["is_payment"] = 1
                 if r.get("is_job_posted"): aggregated[inv]["is_job_posted"] = 1
-                if pay_method and pay_method != "N/A":
+                if pay_method and pay_method != "N/A" and not is_multi_payment_batch:
                     aggregated[inv]["pay_methods"].add(pay_method)
 
                 if r.get("is_job_posted"):

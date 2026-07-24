@@ -70,5 +70,26 @@ class TestBatchPaymentFix(unittest.TestCase):
 
         self.assertNotIn('56673', paid_invoices)
 
+    def test_multi_method_plain_payments_cover_one_posting_batch(self):
+        data = get_report_data(date(2026, 7, 24))
+        found = {
+            item['invoicenumber']: round(float(item['grandtotal']), 2)
+            for item in data['paid']
+        }
+        expected = {
+            '56858': 6658.69,
+            '56954': 665.44,
+            '56974': 4568.93,
+        }
+
+        for invoice_number, amount in expected.items():
+            with self.subTest(invoice_number=invoice_number):
+                self.assertIn(invoice_number, found)
+                self.assertEqual(found[invoice_number], amount)
+        self.assertEqual(
+            round(sum(found[invoice_number] for invoice_number in expected), 2),
+            11893.06,
+        )
+
 if __name__ == '__main__':
     unittest.main()
