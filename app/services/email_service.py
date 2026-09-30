@@ -1,162 +1,131 @@
-import aiosmtplib
 from email.message import EmailMessage
-from app.core.config import SMTP_CONFIG
-from app.services import settings_service
+from html import escape
 
-def format_currency(val):
-    return "${:,.2f}".format(float(val or 0))
+import aiosmtplib
+
+from app.core.config import SMTP_CONFIG
+from app.services import settings_service, spending_service
+
+
+def format_currency(value):
+    return "${:,.2f}".format(float(value or 0))
+
+
+def render_email_content(data, title_prefix="Overnight"):
+    target_date = str(data["date"])
+    title = f"{title_prefix} {target_date} Daily Report".strip()
+    spending = spending_service.get_spending_by_date(target_date)
+    collected = sum(float(item.get("grandtotal") or 0) for item in data["paid"])
+    spent = sum(float(item.get("amount") or 0) for item in spending)
+    new_value = sum(float(item.get("grandtotal") or 0) for item in data["new_today"])
+    partial_count = sum(bool(item.get("is_partial")) for item in data["paid"])
+
+    summary = [
+        ("Collected today", format_currency(collected)),
+        ("Recorded spending", format_currency(spent)),
+        ("New orders", f"{len(data['new_today'])} · {format_currency(new_value)} order value"),
+        ("Ready for pickup", str(len(data["ready"]))),
+        ("Paid today with balance due", str(partial_count)),
+    ]
+    sections = [
+        ("Payments Today", data["paid"], "paid"),
+        ("Daily Spending", spending, "spending"),
+        ("New Orders Today", data["new_today"], "orders"),
+        ("Work In Progress", data["in_progress"], "orders"),
+        ("Ready for Pickup", data["ready"], "orders"),
+        ("Completed Today", data["picked_up"], "orders"),
+    ]
+
+    def card(item, kind):
+        if kind == "spending":
+            heading = item.get("vendor") or "Unknown vendor"
+            description = item.get("description") or ""
+            amount = item.get("amount")
+            label, color = "Spent", "#B42318"
+            details = ""
+        else:
+            heading = f"#{item.get('invoicenumber') or ''} · {item.get('account_display') or '-'}"
+            description = item.get("job_name") or ""
+            amount = item.get("grandtotal")
+            label, color = ("Collected", "#176B43") if kind == "paid" else ("Order value", "#0B1B3D")
+            details = ""
+            if kind == "paid":
+                parts = [f"Transaction: {item.get('transaction_type') or 'Payment'}"]
+                method = item.get("pay_method_display")
+                if method and method != "N/A":
+                    parts.append(method)
+                if item.get("is_partial"):
+                    parts.append(f"Balance due: {format_currency(item.get('current_balance'))}")
+                details = " · ".join(escape(str(part)) for part in parts)
+            elif item.get("status"):
+                details = escape(str(item["status"]))
+
+        return f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#FFFFFF;border:1px solid #DCE4EA;margin:0 0 10px 0;">
+          <tr><td style="padding:12px 14px 4px;color:#0B1B3D;font-size:16px;font-weight:bold;">{escape(str(heading))}</td></tr>
+          <tr><td style="padding:0 14px 6px;color:#344054;font-size:14px;">{escape(str(description))}</td></tr>
+          {f'<tr><td style="padding:0 14px 6px;color:#475467;font-size:13px;">{details}</td></tr>' if details else ''}
+          <tr><td style="padding:0 14px 12px;text-align:right;color:{color};font-size:16px;font-weight:bold;">{label}: {format_currency(amount)}</td></tr>
+        </table>"""
+
+    summary_html = "".join(
+        f'<tr><td style="padding:8px 12px;border-bottom:1px solid #E6EBF0;color:#344054;font-size:14px;">{escape(label)}</td>'
+        f'<td style="padding:8px 12px;border-bottom:1px solid #E6EBF0;text-align:right;color:#0B1B3D;font-size:14px;font-weight:bold;">{escape(value)}</td></tr>'
+        for label, value in summary
+    )
+    sections_html = "".join(
+        f'<h2 style="margin:26px 0 10px;color:#0B1B3D;font-size:18px;border-bottom:2px solid #00A3E0;padding-bottom:8px;">{escape(name)} · {len(items)}</h2>'
+        + ("".join(card(item, kind) for item in items) if items else '<p style="color:#475467;font-size:14px;">No items recorded.</p>')
+        for name, items, kind in sections
+    )
+    html = f"""<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+    <body style="margin:0;padding:16px;background:#F3F6F9;font-family:Arial,Helvetica,sans-serif;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;border-collapse:collapse;">
+        <tr><td style="padding:18px 16px;background:#0B1B3D;color:#FFFFFF;font-size:22px;font-weight:bold;">{escape(title)}</td></tr>
+        <tr><td style="padding:16px;background:#FFFFFF;">
+          <p style="margin:0 0 12px;color:#0B1B3D;font-size:16px;font-weight:bold;">Management summary</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #DCE4EA;">{summary_html}</table>
+          {sections_html}
+          <p style="margin:28px 0 0;color:#667085;font-size:12px;">Generated by Overnight Printing Reporting System</p>
+        </td></tr>
+      </table>
+    </body></html>"""
+
+    text_lines = [title, "", "Management summary"]
+    text_lines.extend(f"{label}: {value}" for label, value in summary)
+    for name, items, kind in sections:
+        text_lines.extend(("", f"{name} ({len(items)})"))
+        if not items:
+            text_lines.append("No items recorded.")
+        for item in items:
+            if kind == "spending":
+                text_lines.append(f"{item.get('vendor') or 'Unknown vendor'} | {item.get('description') or ''} | Spent: {format_currency(item.get('amount'))}")
+            else:
+                line = f"#{item.get('invoicenumber') or ''} | {item.get('account_display') or '-'} | {item.get('job_name') or ''} | {'Collected' if kind == 'paid' else 'Order value'}: {format_currency(item.get('grandtotal'))}"
+                if kind == "paid":
+                    line += f" | Transaction: {item.get('transaction_type') or 'Payment'}"
+                    if item.get("pay_method_display") not in (None, "", "N/A"):
+                        line += f" | {item['pay_method_display']}"
+                    if item.get("is_partial"):
+                        line += f" | Balance due: {format_currency(item.get('current_balance'))}"
+                elif item.get("status"):
+                    line += f" | {item['status']}"
+                text_lines.append(line)
+    return html, "\n".join(text_lines) + "\n"
+
 
 def generate_mobile_html(data):
-    from datetime import datetime
-    from app.services import spending_service
-    
-    target_date = data['date']
-    cashflow = sum(float(item.get('grandtotal', 0) or 0) for item in data['paid'])
-    new_jobs_count = len(data['new_today'])
-    new_jobs_total = sum(float(item.get('grandtotal', 0) or 0) for item in data['new_today'])
-    
-    # Get spending for this date
-    spending_items = spending_service.get_spending_by_date(target_date)
-    total_spending = sum(s['amount'] for s in spending_items)
+    return render_email_content(data)[0]
 
-    def build_cards(items, show_method=False, is_spending=False):
-        if not items:
-            return "<p style='color: #999; font-style: italic; padding-left: 10px; font-size: 15px;'>No items recorded.</p>"
-        
-        cards_html = ""
-        for item in items:
-            if is_spending:
-                title = item['vendor']
-                desc = item['description']
-                amt = item['amount']
-                badges = ""
-                extra_info = ""
-            else:
-                title = f"#{item['invoicenumber']} - {item['account_display']}"
-                desc = item['job_name']
-                amt = float(item.get('grandtotal', 0) or 0)
-                
-                pay_badge = ""
-                if item.get("payment_status") == "PAID":
-                    pay_badge = '<span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px; vertical-align: middle;">PAID</span>'
-                elif item.get("payment_status") and "BAL DUE" in item["payment_status"]:
-                    pay_badge = f'<span style="background: #FFC000; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px; vertical-align: middle;">{item["payment_status"]}</span>'
-
-                type_badge = ""
-                if item.get("transaction_type"):
-                    color = "#6f42c1"
-                    if item["transaction_type"] == "PAID": color = "#28a745"
-                    elif item["transaction_type"] == "DEPOSIT": color = "#007bff"
-                    elif item["transaction_type"] == "AR PAYMENT": color = "#17a2b8"
-                    type_badge = f'<span style="background: {color}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 6px; vertical-align: middle;">{item["transaction_type"]}</span>'
-                
-                badges = f"{type_badge}{pay_badge}"
-                extra_info = f'<div style="font-size: 13px; color: #888; margin-top: 5px;">{item.get("pay_method_display", "N/A")}</div>' if show_method else ""
-
-            cards_html += f"""
-            <div style="background: #ffffff; border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
-                    <tr>
-                        <td style="font-weight: bold; color: #222; font-size: 18px; text-align: left; vertical-align: top; padding-bottom: 5px;">
-                            {title}
-                        </td>
-                        <td style="font-weight: bold; color: { '#d9534f' if is_spending else '#28a745' }; font-size: 18px; text-align: right; white-space: nowrap; vertical-align: top; padding-bottom: 5px;">
-                            ${amt:,.2f}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="color: #444; font-size: 16px; text-align: left; vertical-align: top;">
-                            <div style="margin-top: 5px;">{badges}{desc}</div>
-                        </td>
-                        <td style="text-align: right; vertical-align: bottom;">
-                            {extra_info}
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            """
-        return cards_html
-
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            body {{ font-family: 'Helvetica', 'Arial', sans-serif; background-color: #f4f7f9; margin: 0; padding: 20px; -webkit-text-size-adjust: 100%; }}
-            .container {{ max-width: 600px; margin: 0 auto; }}
-            .summary-card {{ background: #4472C4; color: white; border-radius: 18px; padding: 35px 20px; text-align: center; margin-bottom: 30px; box-shadow: 0 6px 15px rgba(68,114,196,0.3); }}
-            .section-header {{ margin: 40px 0 20px 0; padding-bottom: 10px; border-bottom: 3px solid #4472C4; }}
-            .section-title {{ font-size: 22px; font-weight: bold; color: #222; text-transform: uppercase; letter-spacing: 1px; }}
-            .stat-row {{ background: white; border-radius: 12px; padding: 20px; margin-bottom: 12px; display: block; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div style="text-align: center; padding-bottom: 25px; color: #555; font-size: 18px; font-weight: bold;">Overnight Daily Report • {target_date}</div>
-            
-            <div class="summary-card">
-                <div style="font-size: 18px; font-weight: bold; opacity: 0.95; margin-bottom: 15px; letter-spacing: 1px;">TOTAL COLLECTED TODAY</div>
-                <div style="font-size: 52px; font-weight: 900;">${cashflow:,.2f}</div>
-            </div>
-
-            <div class="stat-row">
-                <table width="100%">
-                    <tr>
-                        <td style="font-size: 22px; color: #4472C4; font-weight: bold;">New Orders Today</td>
-                        <td style="text-align: right; font-size: 32px; font-weight: bold; color: #333;">{new_jobs_count}</td>
-                    </tr>
-                    <tr>
-                        <td colspan="2" style="font-size: 18px; color: #666; padding-top: 10px; font-weight: bold;">Total Amount: ${new_jobs_total:,.2f}</td>
-                    </tr>
-                </table>
-            </div>
-
-            <div class="section-header">
-                <span class="section-title">💰 Payments Today</span>
-            </div>
-            {build_cards(data['paid'], show_method=True)}
-
-            <div class="section-header">
-                <span class="section-title">💸 Daily Spending</span>
-            </div>
-            {build_cards(spending_items, is_spending=True)}
-            {f'<div style="text-align: right; padding: 10px 15px; font-weight: bold; color: #d9534f; font-size: 20px; background: #fff; border-radius: 10px; margin-top: 5px; border: 1px solid #ddd;">Total Spending: ${total_spending:,.2f}</div>' if spending_items else ''}
-
-            <div class="section-header">
-                <span class="section-title">⚙️ Work In Progress</span>
-            </div>
-            {build_cards(data['in_progress'])}
-
-            <div class="section-header">
-                <span class="section-title">📦 Ready for Pickup</span>
-            </div>
-            {build_cards(data['ready'])}
-
-            <div class="section-header">
-                <span class="section-title">✅ Completed Today</span>
-            </div>
-            {build_cards(data['picked_up'])}
-
-            <div style="text-align: center; margin-top: 60px; padding: 30px; color: #888; font-size: 14px;">
-                Generated by Overnight Printing Reporting System
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    return html
 
 async def send_report_email(data):
     settings = settings_service.load_settings()
-    html_content = generate_mobile_html(data)
-    
+    html_content, text_content = render_email_content(data, settings.get("report_title_prefix") or "Overnight")
+
     message = EmailMessage()
     message["From"] = SMTP_CONFIG["user"]
-    # Join list of emails into a comma-separated string for "To" header
     message["To"] = ", ".join(settings["boss_emails"])
-    message["Subject"] = f"Overnight {data['date']} Daily Report"
-    message.set_content("This is an HTML-only email. Please use an HTML-capable email client.")
+    message["Subject"] = f"{settings.get('report_title_prefix') or 'Overnight'} {data['date']} Daily Report"
+    message.set_content(text_content)
     message.add_alternative(html_content, subtype="html")
 
     await aiosmtplib.send(
