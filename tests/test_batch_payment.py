@@ -70,6 +70,13 @@ class TestBatchPaymentFix(unittest.TestCase):
 
         self.assertNotIn('56673', paid_invoices)
 
+    def test_previous_day_deposit_is_not_counted_with_today_payment(self):
+        data = get_report_data(date(2026, 9, 30))
+        paid = {item['invoicenumber']: item for item in data['paid']}
+
+        self.assertEqual(round(float(paid['57392']['grandtotal']), 2), 7176.16)
+        self.assertEqual(round(float(paid['57442']['grandtotal']), 2), 104.00)
+
     def test_multi_method_plain_payments_cover_one_posting_batch(self):
         data = get_report_data(date(2026, 7, 24))
         found = {

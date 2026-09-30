@@ -40,6 +40,9 @@ invoice totals differ from the amount paid on the report date.
    methods, **When** PrintSmith stores multiple plain `Payment` rows against only
    some of the invoices, **Then** Paid Today includes every posted invoice when
    the shared timestamp and combined amounts exactly reconcile.
+6. **Given** an invoice received a deposit on a prior day, **When** its remaining
+   balance is paid on the report date, **Then** Paid Today shows only the
+   report-date payment amount.
 
 ## Edge Cases
 
@@ -113,3 +116,5 @@ invoice totals differ from the amount paid on the report date.
 - **SC-006**: Invoices `56858`, `56954`, and `56974` on 2026-07-24 show
   `6658.69`, `665.44`, and `4568.93`, and their displayed sum equals the
   combined `11893.06` card/check payment.
+- **SC-007**: Invoice `57392` on 2026-09-30 shows `7176.16`; its `6822.41`
+  deposit from 2026-09-23 is excluded from that day's Paid Today amount.

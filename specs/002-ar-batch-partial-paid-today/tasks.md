@@ -38,3 +38,10 @@
   guardrail
 - [x] T015 Run all focused batch-payment regressions including the multi-method
   posting batch
+
+## Phase 5: Prior-Day Deposit Follow-up
+
+- [x] T016 Trace invoice `57392` through report-date account history and lifetime
+  payment details
+- [x] T017 Use report-date direct payment and deposit amounts for Paid Today
+- [x] T018 Verify invoice `57392` and existing focused payment regressions

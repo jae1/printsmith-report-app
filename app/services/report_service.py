@@ -429,8 +429,7 @@ def get_report_data(target_date=None):
                     aggregated[inv]["pay_methods"].add(pay_method)
 
                 if r.get("is_job_posted"):
-                    if aggregated[inv]["grandtotal"] == 0:
-                        aggregated[inv]["grandtotal"] = float(r["transaction_amount"] or 0)
+                    continue
                 elif is_split_batch:
                     split_amount = ar_payment_splits.get(inv)
                     if split_amount is not None:
@@ -438,21 +437,7 @@ def get_report_data(target_date=None):
                     elif len(inv_nums) == 1:
                         aggregated[inv]["grandtotal"] += abs(float(r["transaction_amount"] or 0))
                 else:
-                    cur_detail.execute("SELECT SUM(totalpay) FROM tapeinvoicepayrecord WHERE invoicenumber = %s AND isdeleted = false", (inv,))
-                    tip = float(cur_detail.fetchone()['sum'] or 0)
-                    cur_detail.execute("SELECT SUM(totaldeposits) FROM tapedepositappliedrecord WHERE invoicenumber = %s AND isdeleted = false", (inv,))
-                    tda = float(cur_detail.fetchone()['sum'] or 0)
-                    cur_detail.execute("SELECT SUM(amountpaid) FROM tapesalerecord WHERE invoicenumber = %s AND isdeleted = false AND paymode != 'Charge'", (inv,))
-                    tsr = float(cur_detail.fetchone()['sum'] or 0)
-                    
-                    actual_paid_for_this_inv = tip + tda + tsr
-                    if actual_paid_for_this_inv > 0:
-                        aggregated[inv]["grandtotal"] = actual_paid_for_this_inv
-                    else:
-                        if len(inv_nums) == 1:
-                            aggregated[inv]["grandtotal"] = float(r["transaction_amount"] or 0)
-                        elif aggregated[inv]["grandtotal"] == 0:
-                            aggregated[inv]["grandtotal"] = aggregated[inv]["invoice_total"]
+                    aggregated[inv]["grandtotal"] += abs(float(r["transaction_amount"] or 0))
 
         res = []
         target_date_str = str(target_date)

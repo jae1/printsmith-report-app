@@ -19,6 +19,11 @@ identity, exact history timestamp, linked invoices, and combined posted/payment
 totals all reconcile.
 Keep detail tables for balance calculation only.
 
+For a direct payment or deposit, sum only its report-date `accounthistorydata`
+amount. A same-day posting contributes no payment amount. This fixes invoice
+`57392`, whose prior deposit and report-date payment were previously combined
+from lifetime detail tables.
+
 ## Technical Context
 
 **Language/Version**: Python 3.x  
