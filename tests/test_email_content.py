@@ -23,7 +23,7 @@ class ManagementEmailTest(unittest.TestCase):
         }
         spending = [{"vendor": "Paper Shop", "description": "Stock", "amount": 25.50}]
 
-        with patch("app.services.email_service.spending_service.get_spending_by_date", return_value=spending), \
+        with patch("app.services.email_service.spending_service.get_spending_by_date", return_value=spending) as get_spending, \
              patch("app.services.email_service.settings_service.load_settings", return_value={
                  "boss_emails": ["manager@example.com"], "report_title_prefix": "Shop"
              }), \
@@ -34,12 +34,14 @@ class ManagementEmailTest(unittest.TestCase):
         self.assertEqual(message["Subject"], "Shop 2026-09-30 Daily Report")
         plain, html = (part.get_content() for part in message.iter_parts())
         for text in (plain, html):
-            for expected in ("$7,176.16", "$25.50", "#60001", "#57400", "#57300", "#57200", "#57100",
-                             "Balance due: $6,822.41", "New Orders Today", "Ready for Pickup"):
+            for expected in ("$7,176.16", "$25.50", "#60001", "#57300", "#57200", "#57100",
+                             "BAL DUE: $6,822.41", "New Orders Today", "Ready for Pickup"):
                 self.assertIn(expected, text)
+            self.assertNotIn("#57400", text)
         self.assertIn("A &amp; B", html)
-        self.assertIn("Order value: $100.00", html)
-        self.assertIn("Collected: $7,176.16", html)
+        self.assertIn("Order Value: $100.00", html)
+        self.assertLess(html.index("TOTAL COLLECTED TODAY"), html.index("Payments Today"))
+        get_spending.assert_called_once_with("2026-09-30")
         smtp_send.assert_awaited_once()
 
 
