@@ -113,6 +113,7 @@ def get_report_data(target_date=None):
             COALESCE(ah.finalpaypaymethod, ah.partialpaypaymethod, tdr.paymode) as pay_method,
             CASE 
                 WHEN ah.recordtype = '1' THEN ah.total 
+                WHEN ah.recordtype = '8' THEN -ABS(ah.total)
                 ELSE ABS(ah.total) 
             END as transaction_amount,
             ib.name as job_name, 
@@ -128,13 +129,19 @@ def get_report_data(target_date=None):
             CASE WHEN ah.recordtype = '2' THEN 1 ELSE 0 END as is_payment,
             CASE WHEN ah.recordtype = '1' THEN 1 ELSE 0 END as is_job_posted
         FROM accounthistorydata ah
-        LEFT JOIN tapedepositrecord tdr ON ah.invoicenumber = tdr.invoicenumber AND ah.recordtype = '7'
+        LEFT JOIN LATERAL (
+            SELECT paymode FROM tapedepositrecord
+            WHERE invoicenumber = ah.invoicenumber AND isdeleted = false
+            AND ((ah.recordtype = '7' AND isdeposittake = true)
+              OR (ah.recordtype = '8' AND isdepositreturned = true))
+            ORDER BY ABS(id - ah.id) LIMIT 1
+        ) tdr ON true
         LEFT JOIN invoicebase ib ON ah.invoicenumber = ib.invoicenumber AND ib.isdeleted = false AND ib.voided = false
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p_con ON c.id = p_con.id
         LEFT JOIN account a ON ib.account_id = a.id
         WHERE ah.isdeleted = false
-        AND ah.recordtype IN ('1', '2', '7')
+        AND ah.recordtype IN ('1', '2', '7', '8')
         AND COALESCE(ah.finalpaypaymethod, ah.partialpaypaymethod, tdr.paymode, '') != 'Charge'
         AND DATE(ah.posteddate) = %s
         ORDER BY ah.posteddate DESC, ah.recordtype DESC
@@ -437,7 +444,7 @@ def get_report_data(target_date=None):
                     elif len(inv_nums) == 1:
                         aggregated[inv]["grandtotal"] += abs(float(r["transaction_amount"] or 0))
                 else:
-                    aggregated[inv]["grandtotal"] += abs(float(r["transaction_amount"] or 0))
+                    aggregated[inv]["grandtotal"] += float(r["transaction_amount"] or 0)
 
         res = []
         target_date_str = str(target_date)
@@ -463,7 +470,7 @@ def get_report_data(target_date=None):
             # We don't want to show an invoice in "Paid Today" if the only thing that happened today was posting,
             # and it was already fully paid via a deposit on a PREVIOUS day.
             actual_payment_today = d.get("is_payment", 0) > 0 or d.get("is_deposit", 0) > 0
-            if not actual_payment_today and d.get("is_job_posted", 0) > 0:
+            if not actual_payment_today:
                 continue
 
             is_finalized_today = False

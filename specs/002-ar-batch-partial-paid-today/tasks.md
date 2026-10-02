@@ -45,3 +45,9 @@
   payment details
 - [x] T017 Use report-date direct payment and deposit amounts for Paid Today
 - [x] T018 Verify invoice `57392` and existing focused payment regressions
+
+## Phase 6: Duplicate Deposit and Return Follow-up
+
+- [x] T019 Trace invoices `57473` and `57429` through dated history and deposit records
+- [x] T020 Limit deposit method lookup to one row and net same-day returns
+- [x] T021 Verify both invoice amounts and focused payment regressions

@@ -77,6 +77,14 @@ class TestBatchPaymentFix(unittest.TestCase):
         self.assertEqual(round(float(paid['57392']['grandtotal']), 2), 7176.16)
         self.assertEqual(round(float(paid['57442']['grandtotal']), 2), 104.00)
 
+    def test_multiple_deposit_records_do_not_multiply_or_recount_returns(self):
+        data = get_report_data(date(2026, 10, 2))
+        paid = {item['invoicenumber']: item for item in data['paid']}
+
+        self.assertEqual(round(float(paid['57473']['grandtotal']), 2), 10909.50)
+        self.assertEqual(paid['57473']['pay_method_display'], 'Check')
+        self.assertEqual(round(float(paid['57429']['grandtotal']), 2), 1701.88)
+
     def test_multi_method_plain_payments_cover_one_posting_batch(self):
         data = get_report_data(date(2026, 7, 24))
         found = {

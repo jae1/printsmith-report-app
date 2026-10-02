@@ -24,6 +24,12 @@ amount. A same-day posting contributes no payment amount. This fixes invoice
 `57392`, whose prior deposit and report-date payment were previously combined
 from lifetime detail tables.
 
+For deposits, look up one matching payment method per account-history row so
+multiple `tapedepositrecord` entries cannot multiply the amount. Offset a
+same-day `Deposit Returned` history row against deposits taken that day; a
+return alone does not establish Paid Today activity. Invoices `57473` and
+`57429` cover these cases.
+
 ## Technical Context
 
 **Language/Version**: Python 3.x  

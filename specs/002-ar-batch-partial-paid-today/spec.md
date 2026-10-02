@@ -43,6 +43,9 @@ invoice totals differ from the amount paid on the report date.
 6. **Given** an invoice received a deposit on a prior day, **When** its remaining
    balance is paid on the report date, **Then** Paid Today shows only the
    report-date payment amount.
+7. **Given** an invoice has multiple deposit records, including a same-day
+   return and replacement, **When** Paid Today is generated, **Then** each
+   deposit history entry is counted once and the return offsets the original.
 
 ## Edge Cases
 
@@ -88,6 +91,9 @@ invoice totals differ from the amount paid on the report date.
   total exactly equals the sum of the positive posted invoice amounts.
 - **FR-010**: A payment row consumed by an exactly reconciled multi-payment batch
   MUST NOT also be processed independently.
+- **FR-011**: Deposit payment-method lookup MUST NOT multiply account-history
+  rows. A same-day deposit return MUST reduce that invoice's reported deposit
+  amount without creating a Paid Today row by itself.
 
 ### Key Entities
 
@@ -118,3 +124,6 @@ invoice totals differ from the amount paid on the report date.
   combined `11893.06` card/check payment.
 - **SC-007**: Invoice `57392` on 2026-09-30 shows `7176.16`; its `6822.41`
   deposit from 2026-09-23 is excluded from that day's Paid Today amount.
+- **SC-008**: Invoice `57473` on 2026-10-02 shows `10909.50` after a same-day
+  deposit, return, and replacement; invoice `57429` shows its single report-date
+  deposit of `1701.88` despite an earlier deposit record.
