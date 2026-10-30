@@ -21,13 +21,15 @@ def get_report_data(target_date=None):
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
                pl.name as status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
-               TRIM(a.title) as account_name
+               TRIM(a.title) as account_name,
+               hs.name as hold_name
         FROM invoicebase ib
         JOIN invoice i ON ib.id = i.id
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
         LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
+        LEFT JOIN holdstate hs ON ib.holdstate_id = hs.id AND hs.isdeleted = false
         WHERE DATE(ib.ordereddate) = %s AND ib.isdeleted = false AND ib.voided = false
         ORDER BY ib.invoicenumber DESC
     """, (target_date,))
@@ -38,13 +40,15 @@ def get_report_data(target_date=None):
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
                pl.name as status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
-               TRIM(a.title) as account_name
+               TRIM(a.title) as account_name,
+               hs.name as hold_name
         FROM invoicebase ib
         JOIN invoice i ON ib.id = i.id
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
         LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
+        LEFT JOIN holdstate hs ON ib.holdstate_id = hs.id AND hs.isdeleted = false
         WHERE ib.onpendinglist = true 
         AND COALESCE(ib.readytopickup, false) = false
         AND (pl.name IS NULL OR pl.name NOT IN ('Ready for Pickup', 'Ready for Delivery', 'Shipping', 'Complete'))
@@ -60,13 +64,15 @@ def get_report_data(target_date=None):
         SELECT ib.invoicenumber, ib.name as job_name, ib.grandtotal, ib.ordereddate, ib.wanteddate, 
                pl.name as status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
-               TRIM(a.title) as account_name
+               TRIM(a.title) as account_name,
+               hs.name as hold_name
         FROM invoicebase ib
         JOIN invoice i ON ib.id = i.id
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
         LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
+        LEFT JOIN holdstate hs ON ib.holdstate_id = hs.id AND hs.isdeleted = false
         WHERE ib.onpendinglist = true
         AND (
             COALESCE(ib.readytopickup, false) = true
@@ -84,13 +90,15 @@ def get_report_data(target_date=None):
                ib.offpendingdate, ib.pickupdate, ib.locationchangedate,
                pl.name as status,
                TRIM(CONCAT(p.firstname, ' ', p.lastname)) as contact_name,
-               TRIM(a.title) as account_name
+               TRIM(a.title) as account_name,
+               hs.name as hold_name
         FROM invoicebase ib
         JOIN invoice i ON ib.id = i.id
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p ON c.id = p.id
         LEFT JOIN account a ON ib.account_id = a.id
         LEFT JOIN productionlocations pl ON ib.documentlocation_id = pl.id
+        LEFT JOIN holdstate hs ON ib.holdstate_id = hs.id AND hs.isdeleted = false
         WHERE ib.isdeleted = false AND ib.voided = false
         AND (
             DATE(ib.pickupdate) = %s 

@@ -3,234 +3,330 @@
 <head>
 <meta charset="UTF-8">
 <title>PrintSmith Daily Report</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%230B1B3D' d='M8 2h16v8H8zM4 12h24v14h-4v4H8v-4H4z'/%3E%3Cpath fill='%2300A3E0' d='M11 20h10v7H11z'/%3E%3C/svg%3E">
 <style>
-  body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-  h1 { color: #333; }
-  .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
-  input[type=date], input[type=text], input[type=email], input[type=number] { padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-  button { padding: 10px 16px; font-size: 14px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-  
-  .btn-load { background: #4472C4; color: white; }
-  .btn-export { background: #70AD47; color: white; }
-  .btn-email { background: #5BC0DE; color: white; }
-  .btn-settings { background: #6c757d; color: white; margin-left: auto; }
-  
-  .btn-refresh-fixed { 
-    position: fixed; 
-    top: 20px; 
-    right: 20px; 
-    z-index: 1000; 
-    background: #28a745; 
-    color: white; 
-    padding: 12px 20px;
-    border-radius: 30px; 
-    display: flex; 
-    align-items: center; 
-    gap: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
-    cursor: pointer;
-    font-size: 16px;
-    border: 2px solid white;
-    transition: all 0.2s;
+  :root { --navy: #0B1B3D; --sky: #00A3E0; --text: #24344d; --muted: #59677b; --line: #d8dde3; }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 20px 24px; color: var(--text); background: #f5f6f7; }
+  main { max-width: 1680px; margin: auto; }
+  .page-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }
+  .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .brand-logo { display: block; width: auto; height: 46px; }
+  .brand-title { padding-left: 14px; border-left: 1px solid var(--line); }
+  h1 { color: var(--navy); font-size: 24px; line-height: 1.2; margin: 0; }
+  button, input { font: inherit; }
+  button { min-height: 40px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--navy); cursor: pointer; font-weight: 600; }
+  button:hover { background: #eaf2fa; }
+  button:disabled { opacity: .65; cursor: wait; }
+  :focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; }
+  input:not([type=checkbox]) { min-height: 42px; min-width: 0; padding: 9px 10px; border: 1px solid #a6b3c4; border-radius: 4px; background: white; color: var(--text); }
+  input[type=checkbox] { accent-color: var(--navy); width: 18px; height: 18px; cursor: pointer; vertical-align: middle; }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 0; margin-bottom: 16px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .date-controls, .report-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .date-controls label { font-size: 13px; font-weight: 600; }
+  .report-actions { margin-left: auto; }
+  #dateInput { width: 156px; }
+  .controls button { font-size: 13px; }
+  .field-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .btn-primary, .btn-primary:hover { background: var(--navy); color: white; border-color: var(--navy); }
+  #updateStatus { font-size: 12px; color: var(--muted); text-align: right; }
+  /* A segmented switch, set apart from the action buttons by a divider. */
+  .view-group { display: flex; align-items: center; gap: 10px; margin-left: 12px; padding-left: 24px; border-left: 1px solid var(--line); }
+  .view-group > span { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .view-switch { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: #e6eaf0; }
+  .view-switch button { min-height: 34px; padding: 4px 18px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); }
+  .view-switch button:hover { color: var(--navy); }
+  .view-switch button[aria-pressed=true] { background: white; color: var(--navy); box-shadow: 0 1px 3px #0b1b3d33; }
+  .hidden-note { color: #8a5300; }
+  .hidden-note a { color: var(--navy); font-weight: 600; }
+  .age-badge { display: block; width: fit-content; margin-top: 2px; font-size: 12px; color: var(--muted); }
+  .age-old { padding: 0 6px; border-radius: 3px; background: #fdf1df; color: #8a5300; font-weight: 700; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .dashboard { display: grid; gap: 16px; margin-bottom: 16px; }
+  .overview, .chart-card { background: white; border: 1px solid var(--line); border-radius: 4px; padding: 10px 14px; min-width: 0; }
+  .chart-card h2 { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .chart-card h2 span { font-weight: 400; }
+  .trend { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); height: 156px; list-style: none; margin: 0; padding: 0; }
+  .trend li { display: flex; min-width: 0; }
+  .trend-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 3px; background: none; font-weight: 400; }
+  .trend-btn:hover { background: #f2f5f9; }
+  .trend-btn:hover .trend-bar { filter: brightness(.92); }
+  .trend-amount { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; margin-bottom: 4px; }
+  .trend-bar { width: 62%; max-width: 40px; height: var(--h); min-height: 2px; border-radius: 3px 3px 0 0; background: #8fd3ef; transition: height .35s ease; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .trend-day { align-self: stretch; padding-top: 5px; border-top: 1px solid var(--line); text-align: center; font-size: 12px; line-height: 1.25; color: var(--muted); }
+  .trend-day small { display: block; font-size: 11px; }
+  .trend .zero .trend-bar { background: var(--line); }
+  .trend .current .trend-bar { background: var(--navy); }
+  .trend .current .trend-amount, .trend .current .trend-day { color: var(--navy); font-weight: 700; }
+  .jobs-bar { display: flex; gap: 3px; height: 14px; margin-top: 4px; border-radius: 7px; overflow: hidden; background: #edf0f2; }
+  .jobs-bar span { flex-basis: 0; background: var(--accent); print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .jobs-legend { list-style: none; margin: 10px 0 0; padding: 0; }
+  .jobs-legend li { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 13px; color: var(--text); }
+  .jobs-legend li::before { content: ''; width: 10px; height: 10px; border-radius: 2px; background: var(--accent); print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .jobs-legend strong { margin-left: auto; font-size: 17px; color: var(--navy); font-variant-numeric: tabular-nums; }
+  @media (min-width: 1200px) { .dashboard { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, .75fr); } }
+  @media (min-width: 641px) and (max-width: 1199px) { .dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); } .overview { grid-column: 1 / -1; } }
+  .overview-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; color: var(--muted); font-size: 12px; }
+  .overview-heading h2 { margin: 0; font-size: 12px; font-weight: 600; }
+  /* 2×2 tiles fill the card's height beside the charts; tablets use one row of four. */
+  .overview { display: flex; flex-direction: column; }
+  .overview-metrics { flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; margin: 4px 0 0; }
+  .overview-metrics > div { padding: 8px 16px 5px; min-width: 0; }
+  .overview-metrics > div:nth-child(odd) { padding-left: 0; }
+  .overview-metrics > div:nth-child(even) { border-left: 1px solid var(--line); }
+  .overview-metrics > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .overview-metrics dt { font-size: 13px; color: var(--muted); }
+  .overview-metrics dd { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .overview-metrics .metric-detail { font-size: 13px; font-weight: 400; color: var(--muted); margin-top: 1px; }
+  @media (min-width: 641px) and (max-width: 1199px) {
+    .overview-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .overview-metrics > div { border-top: 0 !important; border-left: 1px solid var(--line); padding-left: 16px; }
+    .overview-metrics > div:first-child { border-left: 0; padding-left: 0; }
   }
-  .btn-refresh-fixed:hover { background: #218838; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
-
-  .section { background: white; border-radius: 8px; padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-  .section h2 { 
-    margin-top: 0; 
-    font-size: 16px; 
-    cursor: pointer; 
-    display: flex; 
-    align-items: center; 
-    user-select: none; 
-    padding: 5px 0;
-  }
-  .section h2 .title { flex: 1; }
-  .section h2 .count { width: 250px; text-align: center; font-weight: normal; font-size: 13px; color: #666; }
-  .section h2 .toggle-icon { width: 30px; text-align: right; font-size: 12px; transition: transform 0.3s; }
-  
+  .print-date { display: none; }
+  .section { --accent: var(--sky); background: white; border: 1px solid var(--line); border-top: 2px solid var(--accent); border-radius: 4px; padding: 14px; margin-bottom: 16px; min-width: 0; }
+  .in_progress { --accent: #7950ac; } .ready { --accent: #27805a; } .picked_up { --accent: #c47835; } .paid { --accent: #a47a17; } .spending { --accent: #b84b4b; }
+  .section h2 { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 16px; color: var(--navy); }
+  .section-toggle { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; font-size: inherit; }
+  .section-toggle:hover { background: #f2f5f9; }
+  .title { flex: 1; }
+  .count { color: var(--muted); font-weight: 600; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .toggle-icon { color: var(--muted); font-size: 12px; }
   .section.collapsed .toggle-icon { transform: rotate(-90deg); }
-  .section.collapsed table, 
-  .section.collapsed .empty, 
-  .section.collapsed .spending-input-row, 
-  .section.collapsed #spendingTableContainer, 
-  .section.collapsed #hiddenTableContainer { display: none !important; }
-  
-  .new_today h2 { color: #4472C4; }
-  .in_progress h2 { color: #7030A0; }
-  .ready h2 { color: #70AD47; }
-  .picked_up h2 { color: #ED7D31; }
-  .paid h2 { color: #B8860B; }
-  .spending h2 { color: #d9534f; }
-
-  .badge-paid { background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
-  .badge-bal { background: #FFC000; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px; }
-  .badge-type { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 5px; color: white; }
-  .bg-paid { background: #28a745; }
-  .bg-partial { background: #FFC000; color: #333 !important; }
-  .bg-deposit { background: #007bff; }
-  .bg-ar { background: #17a2b8; }
-  .bg-mixed { background: #6f42c1; }
-  .badge-method { background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; border: 1px solid #ced4da; }
-
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: #eee; padding: 8px; text-align: left; cursor: pointer; user-select: none; }
-  th:hover { background: #ddd; }
-  td { padding: 8px; border-bottom: 1px solid #eee; }
-  
-  .btn-hide { background: #eee; color: #999; padding: 2px 6px; font-size: 11px; margin-left: 5px; border-radius: 3px; border: none; cursor: pointer; }
-  .empty { color: #999; font-style: italic; }
-  
-  /* Modal Styles */
-  .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-  .modal-content { background-color: white; margin: 10% auto; padding: 30px; border-radius: 12px; width: 500px; box-shadow: 0 5px 25px rgba(0,0,0,0.2); }
-  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .close-modal { font-size: 32px; cursor: pointer; color: #999; background: none; border: none; padding: 0; line-height: 1; margin-top: -10px; }
-  .close-modal:hover { color: #d9534f; }
-  
-  .email-tag { background: #e7f1ff; color: #007bff; padding: 5px 10px; border-radius: 20px; font-size: 13px; display: flex; align-items: center; gap: 8px; font-weight: bold; }
-  .remove-email { cursor: pointer; color: #dc3545; }
-
-  /* Autocomplete Styles */
+  .section.collapsed > :not(h2) { display: none !important; }
+  .section.collapsed h2 { margin-bottom: 0; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; min-width: 780px; border-collapse: collapse; font-size: 14px; }
+  #spendingTableContainer table { min-width: 620px; }
+  th { padding: 6px 10px; text-align: left; background: #f2f5f9; font-size: 12px; color: var(--muted); font-weight: 600; }
+  th button { padding: 4px 0; border: 0; background: transparent; color: inherit; text-align: left; font-size: inherit; }
+  th:last-child, th:last-child button { text-align: right; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e6ebf1; vertical-align: middle; overflow-wrap: anywhere; }
+  tbody tr:hover { background: #f8fafd; }
+  .invoice-cell { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; color: var(--navy); }
+  .date-cell { white-space: nowrap; font-size: 13px; }
+  td[data-label="Status"] { white-space: nowrap; }
+  .amount-cell, .total-row td:last-child { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .total-row { background: #f2f5f9; font-weight: 600; }
+  .total-label { text-align: right; }
+  .btn-hide { min-height: 32px; padding: 4px 8px; margin-left: 8px; font-size: 12px; color: var(--muted); vertical-align: middle; }
+  .empty { color: var(--muted); padding: 16px 0; margin: 0; }
+  .badge-paid, .badge-bal, .badge-type, .badge-method, .badge-hold { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: 700; margin: 2px 4px 2px 0; }
+  .badge-paid, .bg-paid { background: #e2f3e9; color: #18623e; }
+  .badge-bal, .bg-partial { background: #fff0c2; color: #6b4a00; }
+  .bg-deposit { background: #e4efff; color: #22549a; } .bg-ar { background: #dff3f7; color: #1b626f; } .bg-mixed { background: #eee6f8; color: #633b94; }
+  .badge-method { background: #edf0f5; color: #43526a; }
+  .badge-hold { background: #fdf1df; color: #8a5300; border: 1px solid #f1d3a6; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .hold-count { color: #8a5300; font-weight: 600; }
+  .spending-input-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; background: #f7f9fc; border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .spending-input-row > div { min-width: 130px; }
+  .spending-input-row input { width: 100%; }
+  .spend-row .actions { display: flex; justify-content: end; gap: 8px; }
+  .btn-action { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; }
+  .btn-action svg { width: 17px; height: 17px; }
+  .btn-delete, .btn-cancel { color: #a93131; } .btn-save { color: #18623e; }
+  .edit-input { width: 100%; }
   .autocomplete-container { position: relative; width: 100%; }
-  .autocomplete-list { 
-    position: absolute; 
-    top: 100%; 
-    left: 0; 
-    right: 0; 
-    background: white; 
-    border: 1px solid #ddd; 
-    border-top: none; 
-    border-radius: 0 0 4px 4px; 
-    max-height: 200px; 
-    overflow-y: auto; 
-    z-index: 100; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    display: none;
+  .autocomplete-list { display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--line); max-height: 200px; overflow-y: auto; z-index: 10; box-shadow: 0 4px 10px #0b1b3d18; }
+  .autocomplete-item { padding: 10px; cursor: pointer; }
+  .autocomplete-item:hover { background: #eaf2fa; }
+  .modal { display: none; position: fixed; z-index: 2000; inset: 0; padding: 24px; overflow-y: auto; background: #0b1b3d80; }
+  .modal-content { width: 100%; max-width: 560px; margin: 24px auto; background: white; padding: 24px; border-radius: 12px; box-shadow: 0 8px 32px #0b1b3d30; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; color: var(--navy); }
+  .close-modal { font-size: 28px; padding: 0; min-width: 40px; }
+  .email-tag { background: #eaf2fa; color: var(--navy); padding: 5px 10px; border-radius: 20px; font-size: 13px; display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+  .remove-email { padding: 0 6px; border: 0; background: transparent; color: #a93131; }
+  #report.report-board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .report-board .section { padding: 10px; background: #edf0f2; }
+  .report-board .paid { grid-column: 1 / -1; background: white; }
+  .report-board .section:not(.paid) .section-toggle { gap: 8px; }
+  .report-board .section:not(.paid) .count { padding: 1px 6px; border: 1px solid var(--line); border-radius: 3px; background: white; }
+  .report-board .section:not(.paid) .table-scroll { overflow: visible; }
+  .report-board .section:not(.paid) table, .report-board .section:not(.paid) thead, .report-board .section:not(.paid) tbody, .report-board .section:not(.paid) tfoot { display: block; }
+  .report-board .section:not(.paid) table { min-width: 0; }
+  .report-board .section:not(.paid) thead tr { display: flex; flex-wrap: wrap; gap: 2px 8px; padding-bottom: 6px; }
+  .report-board .section:not(.paid) th { padding: 0; background: transparent; }
+  .report-board .section:not(.paid) th:first-child { width: 100% !important; }
+  .select-all-label { font-size: 12px; font-weight: 500; }
+  .report-board .section:not(.paid) tbody tr { display: block; background: white; border: 1px solid var(--line); border-radius: 3px; padding: 8px 10px; margin-bottom: 6px; line-height: 1.4; }
+  .report-board .section:not(.paid) tbody td { display: block; padding: 1px 0; border: 0; white-space: normal; }
+  .report-board .section:not(.paid) .selection-cell { float: right; }
+  .report-board .section:not(.paid) .invoice-cell { padding-right: 26px; }
+  .report-board .section:not(.paid) .invoice-cell::before { content: '#'; }
+  .report-board .section:not(.paid) .account-cell { font-weight: 600; }
+  .report-board .section:not(.paid) tfoot tr { display: flex; justify-content: space-between; }
+  .report-board .section:not(.paid) tfoot td { padding: 10px 0 0; border: 0; }
+  .report-board .section:not(.paid) tfoot .selection-cell { display: none; }
+  @media screen {
+    .report-board .section:not(.paid) :is(.board-detail, .badge-type, .badge-bal, .badge-paid, th:not(.selection-heading)) { display: none; }
   }
-  .autocomplete-item { padding: 10px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #f9f9f9; }
-  .autocomplete-item:hover { background: #f0f7ff; color: #007bff; }
-  .autocomplete-item:last-child { border-bottom: none; }
-
-  /* Spending Row Styles */
-  .spend-row .actions { opacity: 0; transition: all 0.2s ease; white-space: nowrap; display: flex; justify-content: flex-end; gap: 8px; }
-  .spend-row:hover .actions { opacity: 1; }
-  .btn-action { 
-    background: white; 
-    border: 1px solid #e0e0e0; 
-    border-radius: 6px; 
-    width: 32px; 
-    height: 32px; 
-    cursor: pointer; 
-    display: inline-flex; 
-    align-items: center; 
-    justify-content: center; 
-    transition: all 0.2s;
-    padding: 0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  @media screen and (min-width: 1200px) {
+    .report-board .section:not(.paid) .table-scroll { max-height: min(52vh, 560px); overflow: auto; scrollbar-gutter: stable; padding: 3px; }
   }
-  .btn-action svg { width: 16px; height: 16px; display: block; }
-  
-  .btn-edit { color: #4472C4; }
-  .btn-edit:hover { background: #e7f1ff; border-color: #4472C4; transform: translateY(-1px); }
-  
-  .btn-delete { color: #d9534f; }
-  .btn-delete:hover { background: #fff5f5; border-color: #d9534f; transform: translateY(-1px); }
-  
-  .btn-save { background: #28a745; color: white; border: none; }
-  .btn-save:hover { background: #218838; transform: scale(1.05); }
-  
-  .btn-cancel { background: #6c757d; color: white; border: none; }
-  .btn-cancel:hover { background: #5a6268; transform: scale(1.05); }
-  
-  .edit-input { 
-    width: 100%; 
-    padding: 8px 10px; 
-    border: 2px solid #4472C4; 
-    border-radius: 6px; 
-    box-sizing: border-box; 
-    font-size: 13px; 
-    outline: none;
-    box-shadow: 0 2px 8px rgba(68,114,196,0.15);
+  @media (max-width: 1199px) { #report.report-board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 640px) {
+    body { padding: 14px 12px; }
+    .page-header { align-items: start; gap: 10px; }
+    .page-header h1 { font-size: 22px; }
+    .brand { gap: 10px; } .brand-logo { height: 36px; } .brand-title { padding-left: 10px; }
+    #updateStatus { max-width: 125px; font-size: 11px; }
+    .controls { gap: 10px; }
+    .date-controls { width: 100%; }
+    .date-controls label { width: 100%; }
+    #dateInput { flex: 1; width: 130px; }
+    .view-group { margin-left: 0; padding-left: 0; border-left: 0; }
+    .report-actions { width: 100%; margin-left: 0; }
+    .report-actions button { flex: 1; }
+    .overview { padding: 10px; }
+    .overview-metrics > div { padding: 8px 10px; }
+    .overview-metrics > div:nth-child(odd) { padding-left: 0; }
+    .overview-metrics dd { font-size: 22px; }
+    .section { padding: 12px; } .section-toggle { flex-wrap: wrap; } .count { font-size: 12px; }
+    #report.report-board { grid-template-columns: minmax(0, 1fr); }
+    .spending-input-row > div { flex: 1 1 100% !important; }
+    .modal { padding: 12px; } .modal-content { margin: 0 auto; padding: 16px; }
+    button { min-height: 44px; }
+  }
+  @media print {
+    body { background: white; color: black; padding: 0; font-size: 10pt; }
+    .overview, .chart-card { break-inside: avoid; }
+    .dashboard { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, .75fr); }
+    .controls, #updateStatus, .modal, .spending-input-row, #syncStatus, button:not(.section-toggle), input, .toggle-icon, .selection-cell, .selection-heading, .actions { display: none !important; }
+    .print-date { display: block; } .page-header { margin-bottom: 16px; }
+    #report.report-board { display: block; }
+    #report .section, .section { background: white; border: 1px solid #bbb; border-radius: 0; margin-bottom: 16px; padding: 10px; }
+    .section.collapsed > .table-scroll, .section.collapsed > .empty { display: block !important; }
+    .section h2 { margin-bottom: 10px; break-after: avoid; }
+    .section-toggle { min-height: 0; color: black; }
+    .table-scroll { max-height: none !important; overflow: visible !important; }
+    table, #report table, #spendingTableContainer table { min-width: 0; }
+    #report table { display: table; font-size: 9pt; } #report thead { display: table-header-group; } #report tbody { display: table-row-group; } #report tfoot { display: table-row-group; }
+    #report tr { display: table-row; background: white; padding: 0; margin: 0; break-inside: avoid; }
+    #report th, #report td { display: table-cell; float: none; width: auto; padding: 5px; border-bottom: 1px solid #ddd; background: white; }
+    #report .date-cell, #report .amount-cell { white-space: nowrap; font-size: inherit; }
+    #report .section-toggle { flex-wrap: nowrap; }
+    #report .section-toggle .title { flex-basis: auto; }
+    #report .selection-cell, #report .selection-heading { display: none !important; }
+    #report td[data-label]::before { display: none; }
+    #report .amount-cell, #report tfoot td { text-align: right; }
+    #report th button { display: inline !important; min-height: 0; padding: 0; color: black; }
+    .spend-row.editing input { display: block !important; border: 0; padding: 0; }
+    .spend-row.editing .btn-action { display: none !important; }
   }
 </style>
 </head>
 <body>
 
-<button class="btn-refresh-fixed" onclick="loadReport(true)">Refresh</button>
-
-<h1>📋 PrintSmith Daily Report</h1>
-
-<div class="controls">
-  <input type="date" id="dateInput">
-  <button class="btn-load" onclick="loadReport()">Load Report</button>
-  <button class="btn-export" onclick="exportExcel()">Export Excel</button>
-  <button class="btn-email" onclick="sendEmail()">Email to Boss</button>
-  <button class="btn-settings" onclick="openSettings()">⚙️ Settings</button>
-  <span id="updateStatus" style="font-size: 12px; color: #666; margin-left: 10px;"></span>
+<main>
+<header class="page-header">
+  <div class="brand">
+    <img class="brand-logo" src="/logo.png" alt="Overnight Printing Seattle" width="146" height="46">
+    <div class="brand-title">
+      <h1>Daily Report</h1>
+      <p id="printDate" class="print-date"></p>
+    </div>
+  </div>
+  <span id="updateStatus" role="status">Loading report…</span>
+</header>
+<div class="controls" aria-label="Report controls">
+  <div class="date-controls">
+    <label for="dateInput">Report date</label>
+    <input type="date" id="dateInput">
+    <button onclick="openReportDate(today)">Today</button>
+    <button onclick="loadReport(true)">Refresh</button>
+  </div>
+  <div class="view-group">
+  <span aria-hidden="true">View</span>
+  <div class="view-switch" role="group" aria-label="Report view">
+    <button id="tableViewBtn" aria-pressed="true" aria-controls="report" onclick="setReportView('table')">Table</button>
+    <button id="boardViewBtn" aria-pressed="false" aria-controls="report" title="Oldest invoice numbers first" onclick="setReportView('board')">Board</button>
+  </div>
+  </div>
+  <div class="report-actions">
+    <button class="btn-export" onclick="exportExcel()">Export Excel</button>
+    <button class="btn-email" onclick="sendEmail()">Email to Boss</button>
+    <button class="btn-settings" onclick="openSettings()">Settings</button>
+  </div>
 </div>
 
+<div class="dashboard">
+  <section id="overview" class="overview" aria-label="Report overview" hidden></section>
+  <section class="chart-card" aria-labelledby="trendTitle" data-chart hidden>
+    <h2 id="trendTitle">Collected, last 7 workdays <span>Paid Today totals</span></h2>
+    <ol id="trendChart" class="trend"></ol>
+  </section>
+  <section class="chart-card" aria-labelledby="jobsTitle" data-chart hidden>
+    <h2 id="jobsTitle">Jobs</h2>
+    <div id="jobsChart"></div>
+  </section>
+</div>
 <div id="report"></div>
 
 <div id="hiddenSection" class="section" style="display: none; background: #fafafa; border: 1px solid #eee;">
-  <h2 style="color: #999;">
-    <span class="title">🙈 Hidden Items</span>
+  <h2>
+    <button class="section-toggle" aria-expanded="true" onclick="toggleSection(this)"><span class="title">Hidden Items</span>
     <span id="hiddenCount" class="count"></span>
-    <span class="toggle-icon">▼</span>
+    <span class="toggle-icon" aria-hidden="true">▼</span></button>
   </h2>
-  <div id="hiddenTableContainer"></div>
+  <div id="hiddenTableContainer" class="table-scroll" tabindex="0" role="region" aria-label="Hidden invoices"></div>
 </div>
 
 <div id="spendingSection" class="section spending">
   <h2>
-    <span class="title">💸 Daily Spending</span>
+    <button class="section-toggle" aria-expanded="true" onclick="toggleSection(this)"><span class="title">Daily Spending</span>
     <span id="spendingCount" class="count"></span>
-    <span class="toggle-icon">▼</span>
+    <span class="toggle-icon" aria-hidden="true">▼</span></button>
   </h2>
-  <div class="spending-input-row" style="margin-bottom: 20px; background: #fff9f9; padding: 20px; border-radius: 8px; border: 1px dashed #d9534f; display: flex; gap: 15px; align-items: flex-end;">
+  <div class="spending-input-row">
     <div style="flex: 2;">
       <div class="autocomplete-container">
+        <label class="field-label" for="spendVendor">Vendor</label>
         <input type="text" id="spendVendor" placeholder="Vendor" style="width: 100%;" autocomplete="off">
         <div id="vendorAutocompleteList" class="autocomplete-list"></div>
       </div>
     </div>
     <div style="flex: 3;">
+      <label class="field-label" for="spendDesc">Description</label>
       <input type="text" id="spendDesc" placeholder="Description" style="width: 100%;">
     </div>
     <div style="flex: 1;">
+      <label class="field-label" for="spendCard">Card (last 4 digits)</label>
       <input type="text" id="spendCard" placeholder="Card (4 digits)" style="width: 100%;">
     </div>
     <div style="flex: 1.2;">
+      <label class="field-label" for="spendAmount">Amount</label>
       <input type="number" id="spendAmount" placeholder="Amount" step="0.01" style="width: 100%;">
     </div>
-    <button onclick="addSpending()" style="background: #d9534f; color: white; padding: 12px 20px;">Add Entry</button>
+    <button onclick="addSpending()" style="background: #a93131; color: white; padding: 12px 20px;">Add Entry</button>
     <button onclick="syncSpending()" id="syncBtn" style="background: #6f42c1; color: white; padding: 12px 20px;">Sync Emails</button>
   </div>
   <div id="syncStatus" style="margin-bottom: 15px; font-size: 13px; font-weight: bold; color: #6f42c1; display: none; background: #f4effc; padding: 10px; border-radius: 6px; border: 1px solid #e0d0f5;"></div>
-  <div id="spendingTableContainer"></div>
+  <div id="spendingTableContainer" class="table-scroll" tabindex="0" role="region" aria-label="Daily spending entries"></div>
 </div>
 
+</main>
+
 <!-- Settings Modal -->
-<div id="settingsModal" class="modal">
+<div id="settingsModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
   <div class="modal-content">
     <div class="modal-header">
-      <h2 style="margin:0;">⚙️ Report Settings</h2>
-      <button class="close-modal" onclick="closeSettings()">&times;</button>
+      <h2 id="settingsTitle" style="margin:0;">Report Settings</h2>
+      <button class="close-modal" aria-label="Close settings" onclick="closeSettings()">&times;</button>
     </div>
     
     <div style="margin-bottom: 25px;">
-      <label style="display: block; font-size: 14px; font-weight: bold; margin-bottom: 10px;">Email Recipients</label>
+      <label for="newEmailInput" style="display: block; font-size: 14px; font-weight: bold; margin-bottom: 10px;">Email Recipients</label>
       <div id="emailTags" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;"></div>
       <div style="display: flex; gap: 10px;">
         <input type="email" id="newEmailInput" placeholder="Add email..." style="flex: 1;">
-        <button onclick="addEmailTag()" style="background: #007bff; color: white;">Add</button>
+        <button class="btn-primary" onclick="addEmailTag()">Add</button>
       </div>
     </div>
 
     <div style="margin-bottom: 25px;">
-      <label style="display: block; font-size: 14px; font-weight: bold; margin-bottom: 10px;">Report Subject Prefix</label>
+      <label for="setReportPrefix" style="display: block; font-size: 14px; font-weight: bold; margin-bottom: 10px;">Email Body Title Prefix</label>
       <input type="text" id="setReportPrefix" style="width: 100%;">
-      <p style="font-size: 11px; color: #888; margin-top: 5px;">Format: [Prefix] {{date}} Daily Report</p>
+      <p style="font-size: 13px; color: var(--muted); margin-top: 5px;">Subject: Overnight - MM/DD/YYYY Daily Report. This prefix only changes the title inside the email.</p>
     </div>
 
     <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #ddd;">
@@ -241,7 +337,7 @@
       
       <div id="autoSettingsOptions" style="opacity: 0.5; pointer-events: none; transition: opacity 0.3s;">
         <div style="margin-bottom: 15px;">
-            <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Time to Send</label>
+            <label for="setAutoTime" style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Time to Send</label>
             <input type="time" id="setAutoTime" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
         </div>
         <div>
@@ -264,12 +360,12 @@
         <input type="checkbox" id="setAutoSync" style="width: auto; margin-right: 10px; transform: scale(1.2);">
         Auto-Sync Receipt Emails (Every 1 hour)
       </label>
-      <p style="font-size: 11px; color: #666; margin-top: 5px; margin-left: 28px;">Automatically checks for receipts from Amazon, Staples, etc.</p>
+      <p style="font-size: 13px; color: var(--muted); margin-top: 5px; margin-left: 28px;">Automatically checks for receipts from Amazon, Staples, etc.</p>
     </div>
 
     <div style="text-align: right; margin-top: 30px;">
       <button onclick="closeSettings()" style="background: #6c757d; color: white; padding: 12px 20px; margin-right: 10px;">Cancel</button>
-      <button onclick="saveSettings()" style="background: #28a745; color: white; padding: 12px 30px;">Save</button>
+      <button class="btn-primary" onclick="saveSettings()">Save</button>
     </div>
   </div>
 </div>
@@ -281,26 +377,36 @@
   let autoRefreshTimer = null;
   let currentSettings = { boss_emails: [] };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA'); // local YYYY-MM-DD; UTC turns over at 5pm in Seattle
   const dateInput = document.getElementById('dateInput');
   dateInput.value = today;
   dateInput.max = today;
+  // Picking a date loads it; the range guard skips half-typed years (e.g. 0002) and cleared input.
+  dateInput.addEventListener('change', () => {
+    if (dateInput.value >= '2000-01-01' && dateInput.value <= today) loadReport();
+  });
 
   async function loadReport(isAuto = false) {
     const d = dateInput.value;
-    if (!isAuto) document.getElementById('report').innerHTML = '<p>Loading...</p>';
+    if (!isAuto) {
+      document.getElementById('report').innerHTML = '<p>Loading...</p>';
+      document.querySelectorAll('#overview, [data-chart]').forEach(el => el.hidden = true);
+      hiddenTotal = 0;
+    }
     
     try {
       const res = await fetch('/api/report?target_date=' + d);
       reportData = await res.json();
+      document.getElementById('printDate').textContent = 'Report date: ' + d;
       renderReport();
+      loadTrend(reportData.date);
       loadSpending();
       loadVendors();
       loadSettings(); 
       loadHiddenList();
       
       const now = new Date().toLocaleTimeString();
-      document.getElementById('updateStatus').innerText = `Last Updated: ${now} (Auto-refresh 60s)`;
+      document.getElementById('updateStatus').innerText = `Updated ${now} · refreshes every 60s`;
     } catch(e) {
       if (!isAuto) document.getElementById('report').innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
     }
@@ -310,13 +416,29 @@
   }
 
   /* Settings Logic */
-  function openSettings() { document.getElementById('settingsModal').style.display = 'block'; }
-  function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+  function openSettings() {
+    document.getElementById('settingsModal').style.display = 'block';
+    document.querySelector('.close-modal').focus();
+  }
+  function closeSettings() {
+    document.getElementById('settingsModal').style.display = 'none';
+    document.querySelector('.btn-settings').focus();
+  }
+
+  document.getElementById('settingsModal').addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeSettings();
+    if (event.key !== 'Tab') return;
+    const controls = [...event.currentTarget.querySelectorAll('button, input')].filter(el => !el.disabled);
+    const first = controls[0], last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
 
   document.getElementById('setAutoEnable').addEventListener('change', function(e) {
       const opts = document.getElementById('autoSettingsOptions');
       opts.style.opacity = e.target.checked ? '1' : '0.5';
       opts.style.pointerEvents = e.target.checked ? 'auto' : 'none';
+      opts.querySelectorAll('input').forEach(input => input.disabled = !e.target.checked);
   });
 
   async function loadSettings() {
@@ -345,7 +467,7 @@
   function renderEmailTags() {
     const container = document.getElementById('emailTags');
     container.innerHTML = currentSettings.boss_emails.map((email, index) => `
-      <div class="email-tag">${email} <span class="remove-email" onclick="removeEmail(${index})">&times;</span></div>
+      <div class="email-tag">${email} <button class="remove-email" aria-label="Remove recipient" onclick="removeEmail(${index})">&times;</button></div>
     `).join('') || '<p class="empty" style="margin:0;">No recipients added.</p>';
   }
 
@@ -388,7 +510,7 @@
 
   /* Hiding Logic */
   async function hideInvoice(invNum) {
-    if (!confirm(`Hide Invoice #${invNum} globally? (Manage it on ${dateInput.value})`)) return;
+    if (!confirm(`Hide Invoice #${invNum} from the report for ${dateInput.value}?`)) return;
     try { await fetch(`/api/hide/${invNum}?target_date=${dateInput.value}`, { method: 'POST' }); loadReport(); } catch(e) { alert(e.message); }
   }
 
@@ -399,7 +521,9 @@
       const section = document.getElementById('hiddenSection');
       const container = document.getElementById('hiddenTableContainer');
       const countSpan = document.getElementById('hiddenCount');
-      
+      hiddenTotal = list.length;
+      renderHiddenNote();
+
       if (list.length === 0) {
         section.style.display = 'none';
         return;
@@ -647,16 +771,16 @@
         
         if (isEditing) {
           html += `<tr class="spend-row editing" data-id="${s.id}">
-            <td><input type="text" class="edit-input edit-vendor" value="${s.vendor.replace(/"/g, '&quot;')}" onkeydown="handleEditKey(event, '${s.id}')"></td>
-            <td><input type="text" class="edit-input edit-desc" value="${s.description.replace(/"/g, '&quot;')}" onkeydown="handleEditKey(event, '${s.id}')"></td>
-            <td><input type="text" class="edit-input edit-card" value="${(s.card||'').replace(/"/g, '&quot;')}" onkeydown="handleEditKey(event, '${s.id}')"></td>
-            <td><input type="text" class="edit-input edit-amt" value="${s.amount.toFixed(2)}" style="text-align:right;" onkeydown="handleEditKey(event, '${s.id}')"></td>
+            <td><input type="text" aria-label="Vendor" class="edit-input edit-vendor" value="${s.vendor.replace(/"/g, '&quot;')}" onkeydown="handleEditKey(event, '${s.id}')"></td>
+            <td><input type="text" aria-label="Description" class="edit-input edit-desc" value="${s.description.replace(/"/g, '&quot;')}" onkeydown="handleEditKey(event, '${s.id}')"></td>
+            <td><input type="text" aria-label="Card" class="edit-input edit-card" value="${(s.card||'').replace(/"/g, '&quot;')}" onkeydown="handleEditKey(event, '${s.id}')"></td>
+            <td><input type="text" aria-label="Amount" class="edit-input edit-amt" value="${s.amount.toFixed(2)}" style="text-align:right;" onkeydown="handleEditKey(event, '${s.id}')"></td>
             <td style="text-align:right;">
               <div style="display:flex; gap:5px; justify-content:flex-end;">
-                <button class="btn-action btn-save" onclick="saveEditRow('${s.id}')" title="Save">
+                <button class="btn-action btn-save" onclick="saveEditRow('${s.id}')" title="Save" aria-label="Save spending entry">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                 </button>
-                <button class="btn-action btn-cancel" onclick="cancelEditRow()" title="Cancel">
+                <button class="btn-action btn-cancel" onclick="cancelEditRow()" title="Cancel" aria-label="Cancel spending entry">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
               </div>
@@ -670,10 +794,10 @@
             <td style="text-align:right;">${fmtAmt(s.amount)}</td>
             <td style="text-align:right;">
               <div class="actions">
-                <button class="btn-action btn-edit" onclick="startEditRow('${s.id}')" title="Edit">
+                <button class="btn-action btn-edit" onclick="startEditRow('${s.id}')" title="Edit" aria-label="Edit spending entry">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </button>
-                <button class="btn-action btn-delete" onclick="deleteSpending('${s.id}')" title="Delete">
+                <button class="btn-action btn-delete" onclick="deleteSpending('${s.id}')" title="Delete" aria-label="Delete spending entry">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>
               </div>
@@ -688,32 +812,37 @@
 
   /* Common Helpers */
   function getCollapseState(key) {
-    return localStorage.getItem('collapsed_' + key) === 'true';
+    try { return localStorage.getItem('collapsed_' + key) === 'true'; }
+    catch { return false; }
   }
 
-  function setCollapseState(key, isCollapsed) {
-    localStorage.setItem('collapsed_' + key, isCollapsed);
-  }
-
-  function toggleSection(header) {
-    const section = header.parentElement;
+  function toggleSection(button) {
+    const section = button.closest('.section');
     const isCollapsed = section.classList.toggle('collapsed');
-    
-    // Determine a unique key for this section
-    let key = section.id;
-    if (!key) {
-      const classList = section.className.split(' ');
-      key = classList.find(c => c !== 'section') || 'unknown';
-    }
-    setCollapseState(key, isCollapsed);
+    button.setAttribute('aria-expanded', String(!isCollapsed));
+    const key = section.id || [...section.classList].find(c => c !== 'section');
+    try { localStorage.setItem('collapsed_' + key, isCollapsed); } catch {}
   }
 
-  document.addEventListener('click', function(e) {
-    const header = e.target.closest('h2');
-    if (header && header.parentElement.classList.contains('section')) {
-      toggleSection(header);
-    }
-  });
+  function applyReportOrder() {
+    const isBoard = document.getElementById('report').classList.contains('report-board');
+    document.querySelectorAll('#report .section:not(.paid) tbody').forEach(body => {
+      const rows = [...body.rows];
+      rows.sort((a, b) => isBoard
+        ? Number(a.querySelector('.inv-chk').value) - Number(b.querySelector('.inv-chk').value)
+        : Number(a.dataset.tableOrder) - Number(b.dataset.tableOrder));
+      body.append(...rows);
+    });
+  }
+
+  function setReportView(view) {
+    const isBoard = view === 'board';
+    document.getElementById('report').classList.toggle('report-board', isBoard);
+    applyReportOrder();
+    document.getElementById('tableViewBtn').setAttribute('aria-pressed', String(!isBoard));
+    document.getElementById('boardViewBtn').setAttribute('aria-pressed', String(isBoard));
+    try { localStorage.setItem('reportView', isBoard ? 'board' : 'table'); } catch {}
+  }
 
   function fmt(val) { return val ? String(val).split('T')[0] : '-'; }
   function fmtAmt(val) { return '$' + parseFloat(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -779,8 +908,113 @@
     } catch(e) { alert('Batch hide failed'); }
   }
 
+  const AGE_LIMITS = { in_progress: 7, ready: 5 };
+  let hiddenTotal = 0;
+  // Calendar days from the ordered date to the report date; NaN when the date is unusable.
+  const jobAge = (item, date = reportData.date) => Math.round((Date.parse(date + 'T00:00:00Z') - Date.parse(fmt(item.ordereddate) + 'T00:00:00Z')) / 864e5);
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+  function renderHiddenNote() {
+    const note = document.getElementById('hiddenNote');
+    if (!note) return;
+    note.hidden = !hiddenTotal;
+    note.innerHTML = `${plural(hiddenTotal, 'invoice')} hidden, not in totals · <a href="#hiddenSection">View</a>`;
+  }
+
+  function renderOverview() {
+    const date = reportData.date;
+    // Held jobs are waiting on a hold (e.g. Credit Hold), not stuck in production.
+    const held = reportData.in_progress.filter(item => item.hold_name).length;
+    const progressAges = reportData.in_progress.filter(item => !item.hold_name).map(item => ({ item, age: jobAge(item, date) })).filter(entry => entry.age >= 0);
+    const oldest = progressAges.reduce((max, entry) => (!max || entry.age > max.age ? entry : max), null);
+    const stuck = progressAges.filter(entry => entry.age >= AGE_LIMITS.in_progress).length;
+    const waiting = reportData.ready.filter(item => jobAge(item, date) >= AGE_LIMITS.ready).length;
+    const collected = reportData.paid.reduce((total, item) => total + Number(item.grandtotal || 0), 0);
+    const orderValue = reportData.new_today.reduce((total, item) => total + Number(item.grandtotal || 0), 0);
+    const overview = document.getElementById('overview');
+    overview.innerHTML = `
+      <div class="overview-heading"><h2>Overview · <time datetime="${date}">${date}</time></h2><span id="hiddenNote" class="hidden-note" hidden></span></div>
+      <dl class="overview-metrics">
+        <div><dt>Collected</dt><dd id="summaryCollected">${fmtAmt(collected)}</dd></div>
+        <div><dt>New orders</dt><dd id="summaryOrders">${reportData.new_today.length}</dd><dd class="metric-detail" id="summaryOrderValue">${fmtAmt(orderValue)} order value</dd></div>
+        <div><dt>In progress ${AGE_LIMITS.in_progress}+ days</dt><dd id="summaryStuck">${stuck}</dd><dd class="metric-detail" id="summaryOldest">${[oldest ? `Oldest ${plural(oldest.age, 'day')} · since ${fmt(oldest.item.ordereddate).slice(5).replace('-', '/')}` : '', held ? `<span class="hold-count">${held} on hold</span>` : ''].filter(Boolean).join(' · ') || 'No jobs in progress'}</dd></div>
+        <div><dt>Ready for pickup</dt><dd id="summaryReady">${reportData.ready.length}</dd><dd class="metric-detail" id="summaryWaiting">${waiting} waiting ${AGE_LIMITS.ready}+ days</dd></div>
+      </dl>`;
+    renderHiddenNote();
+    overview.hidden = false;
+  }
+
+  const collectedByDate = new Map();
+  const collectedOf = data => data.paid.reduce((total, item) => total + Number(item.grandtotal || 0), 0);
+  const shiftDate = (iso, days) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
+  // Seven most recent Mon–Fri dates ending on the report date (the shop is closed weekends).
+  const workdays = date => {
+    const days = [date];
+    for (let day = date; days.length < 7;) {
+      day = shiftDate(day, -1);
+      if (new Date(day + 'T00:00:00Z').getUTCDay() % 6) days.unshift(day);
+    }
+    return days;
+  };
+  const compactAmt = value => value >= 1000 ? '$' + (value / 1000).toFixed(1) + 'k' : '$' + Math.round(value);
+
+  // Prior days come from the same report endpoint, so Paid Today rules and date-scoped hiding still apply.
+  async function loadTrend(date) {
+    const missing = workdays(date).slice(0, -1).filter(day => !collectedByDate.has(day));
+    await Promise.all(missing.map(async day => {
+      try {
+        const res = await fetch('/api/report?target_date=' + day);
+        if (res.ok) collectedByDate.set(day, collectedOf(await res.json()));
+      } catch (e) { /* the day shows a dash */ }
+    }));
+    if (reportData && reportData.date === date) renderCharts();
+  }
+
+  function openReportDate(day) {
+    dateInput.value = day;
+    loadReport();
+  }
+
+  function renderCharts() {
+    const date = reportData.date;
+    collectedByDate.set(date, collectedOf(reportData));
+    const days = workdays(date);
+    const top = Math.max(1, ...days.map(day => collectedByDate.get(day) || 0));
+    document.getElementById('trendChart').innerHTML = days.map(day => {
+      const value = collectedByDate.get(day), parsed = new Date(day + 'T00:00:00Z');
+      const weekday = parsed.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
+      const label = parsed.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
+      const classes = [day === date ? 'current' : '', !value ? 'zero' : ''].join(' ');
+      const title = `${weekday} ${label} · ${value === undefined ? 'loading' : fmtAmt(value)}`;
+      return `<li class="${classes}" title="${title}"><button class="trend-btn" data-date="${day}" onclick="openReportDate(this.dataset.date)"
+          aria-label="Open report for ${title}"${day === date ? ' aria-current="date"' : ''}>
+        <span class="trend-amount">${value === undefined ? '–' : compactAmt(value)}</span>
+        <span class="trend-bar" style="--h:${Math.round((value || 0) / top * 92)}px" aria-hidden="true"></span>
+        <span class="trend-day">${weekday}<small>${label}</small></span></button></li>`;
+    }).join('');
+    const accents = { new_today: 'var(--sky)', in_progress: '#7950ac', ready: '#27805a', picked_up: '#c47835' };
+    const groups = [['new_today', 'New Today'], ['in_progress', 'In Progress'], ['ready', 'Ready for Pickup'], ['picked_up', 'Completed Today']]
+      .map(([key, label]) => ({ key, label, count: reportData[key].length }));
+    // Lists can overlap, so counts only size the bar and are never summed for display.
+    document.getElementById('jobsChart').innerHTML = `
+      <div class="jobs-bar" aria-hidden="true">${groups.filter(g => g.count).map(g => `<span style="--accent:${accents[g.key]};flex-grow:${g.count}"></span>`).join('')}</div>
+      <ul class="jobs-legend">${groups.map(g => `<li data-group="${g.key}" style="--accent:${accents[g.key]}">${g.label}<strong>${g.count}</strong></li>`).join('')}</ul>`;
+    document.querySelectorAll('[data-chart]').forEach(el => el.hidden = false);
+  }
+
+  function ageBadge(key, item) {
+    const age = jobAge(item);
+    if (!(key in AGE_LIMITS) || !(age >= 0)) return '';
+    const old = age >= AGE_LIMITS[key] && !item.hold_name;
+    return `<span class="age-badge${old ? ' age-old' : ''}" title="${old ? 'Waiting a long time' : 'Days since ordered'}">${plural(age, 'day')}</span>`;
+  }
+
   function renderReport() {
     if (!reportData) return;
+    renderOverview();
+    renderCharts();
+    const scrollPositions = new Map([...document.querySelectorAll('#report .table-scroll')]
+      .map(region => [region.getAttribute('aria-label'), region.scrollTop]));
     const sections = [
       { key: 'new_today', title: 'New Today', cls: 'new_today', dateCol: 'wanteddate', dateLabel: 'Due Date' },
       { key: 'in_progress', title: 'In Progress', cls: 'in_progress', dateCol: 'wanteddate', dateLabel: 'Due Date', showStatus: true },
@@ -795,30 +1029,32 @@
       const isCollapsed = getCollapseState(s.cls);
       html += `<div class="section ${s.cls} ${isCollapsed ? 'collapsed' : ''}">
         <h2>
-          <span class="title">${s.title}</span>
-          <span class="count">(${items.length} items)</span>
+          <button class="section-toggle" aria-expanded="${!isCollapsed}" onclick="toggleSection(this)">
+            <span class="title">${s.title}</span>
+            <span class="count" aria-label="${items.length} invoices">${items.length}</span>
+            <span class="toggle-icon" aria-hidden="true">▼</span>
+          </button>
           <button id="btnHide-${s.key}" onclick="event.stopPropagation(); hideSelectedInvoices('${s.key}')" 
-                  style="display:none; margin-left:15px; padding:4px 10px; font-size:11px; background:#6c757d; color:white; border-radius:4px; vertical-align:middle;">
+                  style="display:none;">
              Hide Selected (<span id="selCount-${s.key}">0</span>)
           </button>
-          <span class="toggle-icon">▼</span>
         </h2>`;
-      if (items.length === 0) { html += '<p class="empty">None</p>'; } 
+      if (items.length === 0) { html += '<p class="empty">No items for this date.</p>'; }
       else {
-        html += `<table><tr>
-            <th style="width:30px;"><input type="checkbox" onclick="toggleAll('${s.key}', this.checked)"></th>
-            <th onclick="handleSort('${s.key}', 'invoicenumber')">Invoice #${getSortIcon(s.key, 'invoicenumber')}</th>
-            <th onclick="handleSort('${s.key}', 'account_display')">Account${getSortIcon(s.key, 'account_display')}</th>
-            <th onclick="handleSort('${s.key}', 'contact_display')">Contact${getSortIcon(s.key, 'contact_display')}</th>
-            <th onclick="handleSort('${s.key}', 'job_name')">Job Description${getSortIcon(s.key, 'job_name')}</th>
-            ${s.showStatus ? `<th onclick="handleSort('${s.key}', 'status')">Status${getSortIcon(s.key, 'status')}</th>` : ''}
-            ${!s.hideOrdered ? `<th onclick="handleSort('${s.key}', 'ordereddate')">Ordered${getSortIcon(s.key, 'ordereddate')}</th>` : ''}
-            <th onclick="handleSort('${s.key}', '${s.dateCol}')">${s.dateLabel}${getSortIcon(s.key, s.dateCol)}</th>
-            ${s.showMethod ? `<th onclick="handleSort('${s.key}', 'pay_method_display')">Method${getSortIcon(s.key, 'pay_method_display')}</th>` : ''}
-            <th onclick="handleSort('${s.key}', 'grandtotal')">Amount${getSortIcon(s.key, 'grandtotal')}</th>
-          </tr>`;
+        html += `<div class="table-scroll" tabindex="0" role="region" aria-label="${s.title} invoices"><table><thead><tr>
+            <th class="selection-heading"><label class="select-all-label"><input type="checkbox" aria-label="Select all ${s.title} invoices" onclick="toggleAll('${s.key}', this.checked)"> All</label></th>
+            <th><button onclick="handleSort('${s.key}', 'invoicenumber')">Invoice #${getSortIcon(s.key, 'invoicenumber')}</button></th>
+            <th><button onclick="handleSort('${s.key}', 'account_display')">Account${getSortIcon(s.key, 'account_display')}</button></th>
+            <th class="board-detail"><button onclick="handleSort('${s.key}', 'contact_display')">Contact${getSortIcon(s.key, 'contact_display')}</button></th>
+            <th><button onclick="handleSort('${s.key}', 'job_name')">Job Description${getSortIcon(s.key, 'job_name')}</button></th>
+            ${s.showStatus ? `<th class="board-detail"><button onclick="handleSort('${s.key}', 'status')">Status${getSortIcon(s.key, 'status')}</button></th>` : ''}
+            ${!s.hideOrdered ? `<th class="board-detail"><button onclick="handleSort('${s.key}', 'ordereddate')">Ordered${getSortIcon(s.key, 'ordereddate')}</button></th>` : ''}
+            <th class="board-detail"><button onclick="handleSort('${s.key}', '${s.dateCol}')">${s.dateLabel}${getSortIcon(s.key, s.dateCol)}</button></th>
+            ${s.showMethod ? `<th class="board-detail"><button onclick="handleSort('${s.key}', 'pay_method_display')">Method${getSortIcon(s.key, 'pay_method_display')}</button></th>` : ''}
+            <th class="board-detail"><button onclick="handleSort('${s.key}', 'grandtotal')">Amount${getSortIcon(s.key, 'grandtotal')}</button></th>
+          </tr></thead><tbody>`;
         let sectionTotal = 0;
-        for (const item of items) {
+        for (const [index, item] of items.entries()) {
           sectionTotal += parseFloat(item.grandtotal || 0);
           
           let badgeClass = 'bg-mixed';
@@ -839,24 +1075,28 @@
             }
           }
 
-          html += `<tr>
-            <td><input type="checkbox" class="inv-chk chk-${s.key}" value="${item.invoicenumber}" onchange="updateSelectedCount('${s.key}')"></td>
-            <td>${item.invoicenumber||''}<button class="btn-hide" onclick="hideInvoice('${item.invoicenumber}')">Hide</button></td>
-            <td>${item.account_display||'-'}</td>
-            <td>${item.contact_display||''}</td>
-            <td>${typeBadge}${partialBadge}${item.job_name||''}${balInfo}${item.payment_status === 'PAID' ? '<span class="badge-paid">PAID</span>' : (item.payment_status && item.payment_status.startsWith('BAL DUE') ? `<span class="badge-bal">${item.payment_status}</span>` : '')}</td>
-            ${s.showStatus ? `<td>${item.status||'-'}</td>` : ''}
-            ${!s.hideOrdered ? `<td>${fmt(item.ordereddate)}</td>` : ''}
-            <td>${fmt(item[s.dateCol])}</td>
-            ${s.showMethod ? `<td><span class="badge-method">${item.pay_method_display||'-'}</span></td>` : ''}
-            <td>${fmtAmt(item.grandtotal)}</td>
+          html += `<tr data-table-order="${index}">
+            <td class="selection-cell"><input type="checkbox" aria-label="Select invoice ${item.invoicenumber}" class="inv-chk chk-${s.key}" value="${item.invoicenumber}" onchange="updateSelectedCount('${s.key}')"></td>
+            <td class="invoice-cell" data-label="Invoice #">${item.invoicenumber||''}<button class="btn-hide" onclick="hideInvoice('${item.invoicenumber}')">Hide</button></td>
+            <td class="account-cell" data-label="Account">${item.account_display||'-'}</td>
+            <td class="board-detail" data-label="Contact">${item.contact_display||''}</td>
+            <td data-label="Job Description">${item.hold_name ? `<span class="badge-hold">${item.hold_name}</span>` : ''}${typeBadge}${partialBadge}${item.job_name||''}${balInfo}${item.payment_status === 'PAID' ? '<span class="badge-paid">PAID</span>' : (item.payment_status && item.payment_status.startsWith('BAL DUE') ? `<span class="badge-bal">${item.payment_status}</span>` : '')}</td>
+            ${s.showStatus ? `<td class="board-detail" data-label="Status">${item.status||'-'}</td>` : ''}
+            ${!s.hideOrdered ? `<td class="date-cell board-detail" data-label="Ordered">${fmt(item.ordereddate)}${ageBadge(s.key, item)}</td>` : ''}
+            <td class="date-cell board-detail" data-label="${s.dateLabel}">${fmt(item[s.dateCol])}</td>
+            ${s.showMethod ? `<td class="board-detail" data-label="Method"><span class="badge-method">${item.pay_method_display||'-'}</span></td>` : ''}
+            <td class="amount-cell board-detail" data-label="Amount">${fmtAmt(item.grandtotal)}</td>
           </tr>`;
         }
-        html += `<tr style="font-weight:bold; background:#f9f9f9;"><td colspan="${(s.showStatus?1:0)+(!s.hideOrdered?1:0)+(s.showMethod?1:0)+6}" style="text-align:right; padding:8px;">Total</td><td style="padding:8px;">${fmtAmt(sectionTotal)}</td></tr></table>`;
+        html += `</tbody><tfoot><tr class="total-row"><td class="selection-cell"></td><td class="total-label" colspan="${(s.showStatus?1:0)+(!s.hideOrdered?1:0)+(s.showMethod?1:0)+5}">Total</td><td>${fmtAmt(sectionTotal)}</td></tr></tfoot></table></div>`;
       }
       html += '</div>';
     }
     document.getElementById('report').innerHTML = html;
+    applyReportOrder();
+    document.querySelectorAll('#report .table-scroll').forEach(region => {
+      region.scrollTop = scrollPositions.get(region.getAttribute('aria-label')) || 0;
+    });
   }
 
   let emailConfirmTimeout = null;
@@ -926,10 +1166,14 @@
     ['hiddenSection', 'spendingSection'].forEach(id => {
       if (getCollapseState(id)) {
         document.getElementById(id).classList.add('collapsed');
+        document.querySelector(`#${id} .section-toggle`).setAttribute('aria-expanded', 'false');
       }
     });
   });
 
+  let initialView = 'table';
+  try { initialView = localStorage.getItem('reportView') || 'table'; } catch {}
+  setReportView(initialView);
   loadReport();
 </script>
 </body>
