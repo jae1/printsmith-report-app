@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import endpoints, views
 import asyncio
+import os
 from datetime import datetime
 from app.services import settings_service, email_service, report_service, expense_parser_service
 
@@ -17,6 +18,10 @@ def create_app() -> FastAPI:
 
     app.include_router(views.router)
     app.include_router(endpoints.router)
+
+    @app.get("/api/health")
+    def health():
+        return {"status": "ok", "revision": os.environ.get("PRINTSMITH_RELEASE_REVISION", "development")}
 
     @app.on_event("startup")
     async def startup_event():

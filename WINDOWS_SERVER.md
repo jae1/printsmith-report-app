@@ -1,8 +1,10 @@
 # Windows Server Operation
 
-The Windows server is an execution-only machine. Development happens elsewhere,
-and this machine force-syncs to `origin/main` while preserving ignored runtime
-JSON files.
+The Windows server is an execution-only machine. Development happens elsewhere.
+The watchdog fetches `origin/main`, prepares isolated releases, and switches only
+after regression and accounting checks pass. Runtime JSON stays in the original
+directory. See [RELEASING.md](RELEASING.md) for baseline approval, migration,
+version verification, and rollback.
 
 ## One-Time Automatic Setup
 
@@ -38,9 +40,13 @@ The scheduled watchdog:
 - Is restarted by Task Scheduler every two minutes if the watchdog fails
 - Checks the report server every 10 seconds and restarts it after a crash
 - Adopts an existing server already listening on port `8000`
+- Verifies the process identity before adopting it; unrelated listeners are
+  reported as port conflicts and are never stopped
 - Checks `origin/main` every 10 minutes
-- Keeps the working server online while Git and dependencies are prepared
-- Restarts onto an update only after preparation succeeds
+- Keeps the working server online and monitored while isolated source,
+  dependencies, tests, and accounting comparison are prepared
+- Restarts onto an update only after preparation succeeds, verifies its health
+  and revision, and restores the previous release if validation fails
 - Retries failed updates after two minutes
 - Writes watchdog activity to `server_auto_update.log`
 
@@ -77,7 +83,11 @@ The task state should be `Running`. After a controlled reboot, confirm that
 - The scheduled Windows account must have working GitHub SSH access without an
   interactive passphrase prompt. Test with `git fetch origin main` while signed
   in as that account.
-- Any local code changes on the Windows server are overwritten by deployment.
+- Local code changes are not deployed; application releases use the fetched
+  remote revision. Controller updates require the maintenance steps in
+  `RELEASING.md`.
 - `app_settings.json`, `daily_spending.json`, `hidden_invoices.json`, logs, and
   other ignored runtime files are not overwritten by `git reset --hard`.
 - Do not run a second copy of the server manually; the watchdog owns port `8000`.
+- Keep `.release-baseline.json`, `.server-release.json`, and `.releases/` local
+  and untracked. A new deployment without an approved baseline is blocked.

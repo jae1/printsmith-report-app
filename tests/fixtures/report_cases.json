@@ -1,0 +1,336 @@
+{
+  "description": "Synthetic, anonymized relational regression data. Expected results are accounting examples, not live database captures.",
+  "tables": {
+    "invoicebase": [
+      {"id": 50619, "invoicenumber": "50619", "name": "Job 50619", "grandtotal": 196.14, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 50332, "invoicenumber": "50332", "name": "Job 50332", "grandtotal": 488.96, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 950619, "invoicenumber": "50619", "name": "Job 50619", "grandtotal": 999, "ordereddate": "2026-11-06 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 950332, "invoicenumber": "50332", "name": "Job 50332", "grandtotal": 999, "ordereddate": "2026-11-06 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 900, "invoicenumber": "900", "name": "Job 900", "grandtotal": 20, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 901, "invoicenumber": "901", "name": "Job 901", "grandtotal": 30, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1, "voided": true},
+      {"id": 902, "invoicenumber": "902", "name": "Job 902", "grandtotal": 40, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1, "isdeleted": true},
+      {"id": 10, "invoicenumber": "10", "name": "Job 10", "grandtotal": 10, "ordereddate": "2026-06-05 09:00:00", "account_id": 1, "contact_id": 1, "onpendinglist": true, "readytopickup": true, "documentlocation_id": 1},
+      {"id": 11, "invoicenumber": "11", "name": "Job 11", "grandtotal": 10, "ordereddate": "2026-05-31 09:00:00", "account_id": 1, "contact_id": 1, "onpendinglist": true, "documentlocation_id": 2},
+      {"id": 12, "invoicenumber": "12", "name": "Job 12", "grandtotal": 10, "ordereddate": "2026-05-30 09:00:00", "account_id": 1, "contact_id": 1, "onpendinglist": true, "documentlocation_id": 2},
+      {"id": 57758, "invoicenumber": "57758", "name": "Job 57758", "grandtotal": 53.43, "ordereddate": "2026-11-11 09:00:00", "account_id": 1, "contact_id": 1, "onpendinglist": true, "readytopickup": true},
+      {"id": 13, "invoicenumber": "13", "name": "Job 13", "grandtotal": 10, "ordereddate": "2026-06-09 09:00:00", "account_id": 1, "contact_id": 1, "onpendinglist": true, "documentlocation_id": 1},
+      {"id": 14, "invoicenumber": "14", "name": "Job 14", "grandtotal": 10, "ordereddate": "2026-06-10 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 15, "invoicenumber": "15", "name": "Job 15", "grandtotal": 10, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1, "pickupdate": "2026-06-10 12:00:00"},
+      {"id": 57392, "invoicenumber": "57392", "name": "Job 57392", "grandtotal": 13998.57, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1, "offpendingdate": "2026-09-30 15:00:00"},
+      {"id": 56276, "invoicenumber": "56276", "name": "Job 56276", "grandtotal": 1689.14, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 100, "invoicenumber": "100", "name": "Job 100", "grandtotal": 100, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 101, "invoicenumber": "101", "name": "Job 101", "grandtotal": 200, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 56762, "invoicenumber": "56762", "name": "Job 56762", "grandtotal": 355.95, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 56896, "invoicenumber": "56896", "name": "Job 56896", "grandtotal": 199.99, "ordereddate": "2026-01-01 09:00:00", "account_id": 2, "contact_id": 2},
+      {"id": 56858, "invoicenumber": "56858", "name": "Job 56858", "grandtotal": 6658.69, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 56954, "invoicenumber": "56954", "name": "Job 56954", "grandtotal": 665.44, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 56974, "invoicenumber": "56974", "name": "Job 56974", "grandtotal": 4568.93, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 56673, "invoicenumber": "56673", "name": "Job 56673", "grandtotal": 100, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1, "offpendingdate": "2026-06-18 12:00:00"},
+      {"id": 57473, "invoicenumber": "57473", "name": "Job 57473", "grandtotal": 10909.5, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 700, "invoicenumber": "700", "name": "Job 700", "grandtotal": 100, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1, "offpendingdate": "2026-10-02 13:00:00"},
+      {"id": 800, "invoicenumber": "800", "name": "Job 800", "grandtotal": 70, "ordereddate": "2026-08-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 810, "invoicenumber": "810", "name": "Job 810", "grandtotal": 10, "ordereddate": "2026-01-01 09:00:00", "account_id": 10, "contact_id": 1},
+      {"id": 811, "invoicenumber": "811", "name": "Job 811", "grandtotal": 10, "ordereddate": "2026-01-01 09:00:00", "account_id": 11, "contact_id": 1},
+      {"id": 812, "invoicenumber": "812", "name": "Job 812", "grandtotal": 10, "ordereddate": "2026-01-01 09:00:00", "account_id": 12, "contact_id": 1},
+      {"id": 813, "invoicenumber": "813", "name": "Job 813", "grandtotal": 10, "ordereddate": "2026-01-01 09:00:00", "account_id": 13, "contact_id": 1},
+      {"id": 102, "invoicenumber": "102", "name": "Partially paid AR invoice", "grandtotal": 200, "ordereddate": "2026-01-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 77710, "invoicenumber": "77710", "name": "Different-contact batch member", "grandtotal": 40, "ordereddate": "2026-11-01 09:00:00", "account_id": 1, "contact_id": 1},
+      {"id": 77711, "invoicenumber": "77711", "name": "Different-contact batch member", "grandtotal": 60, "ordereddate": "2026-11-01 09:00:00", "account_id": 1, "contact_id": 3}
+    ],
+    "invoice": [
+      {"id": 50619},
+      {"id": 50332},
+      {"id": 901},
+      {"id": 902},
+      {"id": 10},
+      {"id": 11},
+      {"id": 12},
+      {"id": 57758},
+      {"id": 13},
+      {"id": 14},
+      {"id": 15},
+      {"id": 57392},
+      {"id": 56276},
+      {"id": 100},
+      {"id": 101},
+      {"id": 56762},
+      {"id": 56896},
+      {"id": 56858},
+      {"id": 56954},
+      {"id": 56974},
+      {"id": 56673},
+      {"id": 57473},
+      {"id": 700},
+      {"id": 800},
+      {"id": 810},
+      {"id": 811},
+      {"id": 812},
+      {"id": 813},
+      {"id": 102},
+      {"id": 77710},
+      {"id": 77711}
+    ],
+    "account": [
+      {"id": 1, "title": "Example Customer"},
+      {"id": 2, "title": "Example Customer"},
+      {"id": 10, "title": "Belltown Minuteman Press"},
+      {"id": 11, "title": "Federal Way Minuteman Press"},
+      {"id": 12, "title": "Green River Printing"},
+      {"id": 13, "title": "Owner Exclusion"}
+    ],
+    "contact": [
+      {"id": 1},
+      {"id": 2},
+      {"id": 3}
+    ],
+    "party": [
+      {"id": 1, "firstname": "Alex", "lastname": "Customer"},
+      {"id": 2, "firstname": "Alex", "lastname": "Customer"},
+      {"id": 3, "firstname": "Casey", "lastname": "Other"}
+    ],
+    "productionlocations": [
+      {"id": 1, "name": "Press"},
+      {"id": 2, "name": "Ready for Pickup"},
+      {"id": 3, "name": "Complete"}
+    ],
+    "accounthistorydata": [
+      {"id": 1, "invoicenumber": "50619", "name": "Payment", "recordtype": "2", "total": -196.14, "posteddate": "2026-06-03 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 2, "invoicenumber": "50332", "name": "Payment", "recordtype": "2", "total": -488.96, "posteddate": "2026-06-03 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 3, "invoicenumber": "900", "name": "Payment", "recordtype": "2", "total": -20, "posteddate": "2026-06-03 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 4, "invoicenumber": "901", "name": "Payment", "recordtype": "2", "total": -30, "posteddate": "2026-06-03 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 5, "invoicenumber": "902", "name": "Payment", "recordtype": "2", "total": -40, "posteddate": "2026-06-03 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 20, "invoicenumber": "57392", "name": "Deposit", "recordtype": "7", "total": 6822.41, "posteddate": "2026-09-23 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 21, "invoicenumber": "57392", "name": "Posting", "recordtype": "1", "total": 7176.16, "posteddate": "2026-09-30 12:00:00", "finalpaypaymethod": "Credit Card", "finalpaytotal": 7176.16},
+      {"id": 22, "invoicenumber": "57392", "name": "Payment", "recordtype": "2", "total": -7176.16, "posteddate": "2026-09-30 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 56306, "invoicenumber": "56276", "name": "Posting", "recordtype": "1", "total": 1689.14, "posteddate": "2026-05-07 12:00:00", "finalpaypaymethod": "Charge", "partialpaytotal": 20.62, "finalpaytotal": 1668.52},
+      {"id": 130, "invoicenumber": "100", "name": "Posting", "recordtype": "1", "total": 100, "posteddate": "2026-05-07 12:00:00", "finalpaypaymethod": "Charge", "partialpaytotal": 25, "finalpaytotal": 75},
+      {"id": 131, "invoicenumber": "101", "name": "Posting", "recordtype": "1", "total": 200, "posteddate": "2026-05-07 12:00:00", "finalpaypaymethod": "Charge", "partialpaytotal": 50, "finalpaytotal": 150},
+      {"id": 40, "invoicenumber": null, "name": "Payment(56276)", "recordtype": "2", "total": -20.62, "posteddate": "2026-06-16 12:00:00", "finalpaypaymethod": "Check"},
+      {"id": 41, "invoicenumber": null, "name": "Payment(100,101)", "recordtype": "2", "total": -75, "posteddate": "2026-06-16 12:00:00", "finalpaypaymethod": "Check"},
+      {"id": 42, "invoicenumber": null, "name": "Payment(56276)", "recordtype": "2", "total": -1668.52, "posteddate": "2026-06-22 12:00:00", "finalpaypaymethod": "Check"},
+      {"id": 43, "invoicenumber": null, "name": "Payment(100,101)", "recordtype": "2", "total": -225, "posteddate": "2026-06-22 12:00:00", "finalpaypaymethod": "Check"},
+      {"id": 56812, "invoicenumber": "56762", "name": "Posting", "recordtype": "1", "total": 355.95, "posteddate": "2026-07-15 09:18:03.100000", "finalpaypaymethod": "Credit Card", "finalpaytotal": 355.95},
+      {"id": 56946, "invoicenumber": "56896", "name": "Posting", "recordtype": "1", "total": 199.99, "posteddate": "2026-07-15 09:18:03.100000", "finalpaypaymethod": "Credit Card", "finalpaytotal": 199.99},
+      {"id": 51, "invoicenumber": "56896", "name": "Payment", "recordtype": "2", "total": -555.94, "posteddate": "2026-07-15 09:18:03.172000", "finalpaypaymethod": "Credit Card"},
+      {"id": 56918, "invoicenumber": "56858", "name": "Posting", "recordtype": "1", "total": 6658.69, "posteddate": "2026-07-24 12:36:02.953000", "finalpaypaymethod": "Credit Card", "finalpaytotal": 6658.69},
+      {"id": 57014, "invoicenumber": "56954", "name": "Posting", "recordtype": "1", "total": 665.44, "posteddate": "2026-07-24 12:36:02.953000", "finalpaypaymethod": "Check", "finalpaytotal": 665.44},
+      {"id": 57034, "invoicenumber": "56974", "name": "Posting", "recordtype": "1", "total": 4568.93, "posteddate": "2026-07-24 12:36:02.953000", "finalpaypaymethod": "Check", "finalpaytotal": 4568.93},
+      {"id": 61, "invoicenumber": "56858", "name": "Payment", "recordtype": "2", "total": -950, "posteddate": "2026-07-24 12:36:02.953000", "finalpaypaymethod": "Credit Card"},
+      {"id": 62, "invoicenumber": "56974", "name": "Payment", "recordtype": "2", "total": -10943.06, "posteddate": "2026-07-24 12:36:02.953000", "finalpaypaymethod": "Check"},
+      {"id": 70, "invoicenumber": "56673", "name": "Deposit", "recordtype": "7", "total": 100, "posteddate": "2026-06-17 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 71, "invoicenumber": "56673", "name": "Posting", "recordtype": "1", "total": 0, "posteddate": "2026-06-18 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 80, "invoicenumber": "57473", "name": "Deposit", "recordtype": "7", "total": 10909.5, "posteddate": "2026-10-02 12:00:00", "finalpaypaymethod": null},
+      {"id": 82, "invoicenumber": "57473", "name": "Deposit", "recordtype": "8", "total": 10909.5, "posteddate": "2026-10-02 12:01:00", "finalpaypaymethod": null},
+      {"id": 84, "invoicenumber": "57473", "name": "Deposit", "recordtype": "7", "total": 10909.5, "posteddate": "2026-10-02 12:02:00", "finalpaypaymethod": null},
+      {"id": 90, "invoicenumber": "700", "name": "Deposit", "recordtype": "7", "total": 100, "posteddate": "2026-10-02 12:00:00", "finalpaypaymethod": "Deposit"},
+      {"id": 91, "invoicenumber": "700", "name": "Posting", "recordtype": "1", "total": 0, "posteddate": "2026-10-02 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 100, "invoicenumber": "800", "name": "Deposit", "recordtype": "7", "total": 20, "posteddate": "2026-08-01 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 101, "invoicenumber": "800", "name": "Payment", "recordtype": "2", "total": -50, "posteddate": "2026-08-02 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 920, "invoicenumber": "810", "name": "Payment", "recordtype": "2", "total": -10, "posteddate": "2026-08-02 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 921, "invoicenumber": "811", "name": "Payment", "recordtype": "2", "total": -10, "posteddate": "2026-08-02 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 922, "invoicenumber": "812", "name": "Payment", "recordtype": "2", "total": -10, "posteddate": "2026-08-02 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 923, "invoicenumber": "813", "name": "Payment", "recordtype": "2", "total": -10, "posteddate": "2026-08-02 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 200, "invoicenumber": null, "name": "Payment(102)", "recordtype": "2", "total": -50, "posteddate": "2026-06-16 13:00:00", "finalpaypaymethod": "Check"},
+      {"id": 77710, "invoicenumber": "77710", "name": "Posting", "recordtype": "1", "total": 40, "finalpaytotal": 40, "posteddate": "2026-11-04 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 77711, "invoicenumber": "77711", "name": "Posting", "recordtype": "1", "total": 60, "finalpaytotal": 60, "posteddate": "2026-11-04 12:00:00", "finalpaypaymethod": "Credit Card"},
+      {"id": 77712, "invoicenumber": "77711", "name": "Payment", "recordtype": "2", "total": -100, "posteddate": "2026-11-04 12:00:01", "finalpaypaymethod": "Credit Card"}
+    ],
+    "tapedepositrecord": [
+      {"id": 81, "invoicenumber": "57473", "paymode": "Check", "isdeposittake": true, "isdepositreturned": false},
+      {"id": 83, "invoicenumber": "57473", "paymode": "Check", "isdeposittake": false, "isdepositreturned": true},
+      {"id": 85, "invoicenumber": "57473", "paymode": "Check", "isdeposittake": true, "isdepositreturned": false}
+    ],
+    "tapeinvoicepayrecord": [
+      {"invoicenumber": "56276", "totalpay": 1689.14},
+      {"invoicenumber": "100", "totalpay": 100},
+      {"invoicenumber": "101", "totalpay": 200},
+      {"invoicenumber": "102", "totalpay": 50}
+    ],
+    "tapedepositappliedrecord": [
+      {"invoicenumber": "57392", "totaldeposits": 6822.41},
+      {"invoicenumber": "56673", "totaldeposits": 100},
+      {"invoicenumber": "57473", "totaldeposits": 10909.5},
+      {"invoicenumber": "700", "totaldeposits": 100}
+    ],
+    "tapesalerecord": [
+      {"invoicenumber": "50619", "amountpaid": 196.14, "paymode": "Credit Card"},
+      {"invoicenumber": "50332", "amountpaid": 488.96, "paymode": "Credit Card"},
+      {"invoicenumber": "57392", "amountpaid": 7176.16, "paymode": "Credit Card"},
+      {"invoicenumber": "56762", "amountpaid": 355.95, "paymode": "Credit Card"},
+      {"invoicenumber": "56896", "amountpaid": 199.99, "paymode": "Credit Card"},
+      {"invoicenumber": "56858", "amountpaid": 6658.69, "paymode": "Credit Card"},
+      {"invoicenumber": "56954", "amountpaid": 665.44, "paymode": "Check"},
+      {"invoicenumber": "56974", "amountpaid": 4568.93, "paymode": "Check"},
+      {"invoicenumber": "800", "amountpaid": 70, "paymode": "Credit Card"},
+      {"invoicenumber": "77710", "amountpaid": 40, "paymode": "Credit Card"},
+      {"invoicenumber": "77711", "amountpaid": 60, "paymode": "Credit Card"}
+    ]
+  },
+  "hidden": {"2026-08-01": ["800"]},
+  "settings": {"excluded_paid_accounts": ["Owner Exclusion"]},
+  "cases": [
+    {
+      "name": "invoice_only_reused_estimate",
+      "date": "2026-06-03",
+      "expected": {
+        "paid": {
+          "50619": {"amount": "196.14", "invoice_total": "196.14", "type": "PAID", "method": "Credit Card", "balance": "0.00", "partial": false},
+          "50332": {"amount": "488.96", "invoice_total": "488.96", "type": "PAID", "method": "Credit Card", "balance": "0.00", "partial": false}
+        },
+        "new_today": [],
+        "in_progress": [],
+        "ready": ["11", "12"],
+        "picked_up": []
+      }
+    },
+    {
+      "name": "ready_date_bounds",
+      "date": "2026-06-10",
+      "expected": {
+        "paid": {
+        },
+        "new_today": ["14"],
+        "in_progress": ["13"],
+        "ready": ["10", "11"],
+        "picked_up": ["15"]
+      }
+    },
+    {
+      "name": "prior_deposit_remaining_payment",
+      "date": "2026-09-30",
+      "expected": {
+        "paid": {
+          "57392": {"amount": "7176.16", "invoice_total": "13998.57", "type": "PAID", "method": "Credit Card", "balance": "0.00", "partial": false}
+        },
+        "new_today": [],
+        "in_progress": ["13"],
+        "ready": [],
+        "picked_up": ["57392"]
+      }
+    },
+    {
+      "name": "partial_ar_batch",
+      "date": "2026-06-16",
+      "expected": {
+        "paid": {
+          "56276": {"amount": "20.62", "invoice_total": "1689.14", "type": "AR PAYMENT", "method": "Check", "balance": "0.00", "partial": false},
+          "100": {"amount": "25.00", "invoice_total": "100.00", "type": "AR PAYMENT", "method": "Check", "balance": "0.00", "partial": false},
+          "101": {"amount": "50.00", "invoice_total": "200.00", "type": "AR PAYMENT", "method": "Check", "balance": "0.00", "partial": false},
+          "102": {"amount": "50.00", "invoice_total": "200.00", "type": "AR PAYMENT", "method": "Check", "balance": "150.00", "partial": true}
+        },
+        "new_today": [],
+        "in_progress": ["13"],
+        "ready": [],
+        "picked_up": []
+      }
+    },
+    {
+      "name": "final_ar_batch",
+      "date": "2026-06-22",
+      "expected": {
+        "paid": {
+          "56276": {"amount": "1668.52", "invoice_total": "1689.14", "type": "AR PAYMENT", "method": "Check", "balance": "0.00", "partial": false},
+          "100": {"amount": "75.00", "invoice_total": "100.00", "type": "AR PAYMENT", "method": "Check", "balance": "0.00", "partial": false},
+          "101": {"amount": "150.00", "invoice_total": "200.00", "type": "AR PAYMENT", "method": "Check", "balance": "0.00", "partial": false}
+        },
+        "new_today": [],
+        "in_progress": ["13"],
+        "ready": [],
+        "picked_up": []
+      }
+    },
+    {
+      "name": "linked_plain_batch",
+      "date": "2026-07-15",
+      "expected": {
+        "paid": {
+          "56762": {"amount": "355.95", "invoice_total": "355.95", "type": "PAID", "method": "Credit Card", "balance": "0.00", "partial": false},
+          "56896": {"amount": "199.99", "invoice_total": "199.99", "type": "PAID", "method": "Credit Card", "balance": "0.00", "partial": false}
+        },
+        "new_today": [],
+        "in_progress": ["13"],
+        "ready": [],
+        "picked_up": []
+      }
+    },
+    {
+      "name": "multi_method_batch",
+      "date": "2026-07-24",
+      "expected": {
+        "paid": {
+          "56858": {"amount": "6658.69", "invoice_total": "6658.69", "type": "PAID", "method": "Credit Card", "balance": "0.00", "partial": false},
+          "56954": {"amount": "665.44", "invoice_total": "665.44", "type": "PAID", "method": "Check", "balance": "0.00", "partial": false},
+          "56974": {"amount": "4568.93", "invoice_total": "4568.93", "type": "PAID", "method": "Check", "balance": "0.00", "partial": false}
+        },
+        "new_today": [],
+        "in_progress": ["13"],
+        "ready": [],
+        "picked_up": []
+      }
+    },
+    {
+      "name": "previous_day_prepaid_posting",
+      "date": "2026-06-18",
+      "expected": {
+        "paid": {
+        },
+        "new_today": [],
+        "in_progress": ["13"],
+        "ready": [],
+        "picked_up": ["56673"]
+      }
+    },
+    {
+      "name": "deposit_return_and_same_day_post",
+      "date": "2026-10-02",
+      "expected": {
+        "paid": {
+          "57473": {"amount": "10909.50", "invoice_total": "10909.50", "type": "DEPOSIT", "method": "Check", "balance": "0.00", "partial": false},
+          "700": {"amount": "100.00", "invoice_total": "100.00", "type": "PAID", "method": "Credit Card", "balance": "0.00", "partial": false}
+        },
+        "new_today": [],
+        "in_progress": ["13"],
+        "ready": [],
+        "picked_up": ["700"]
+      }
+    },
+    {
+      "name": "hidden_selected_date",
+      "date": "2026-08-01",
+      "expected": {
+        "paid": {
+        },
+        "new_today": [],
+        "in_progress": ["13"],
+        "ready": [],
+        "picked_up": []
+      }
+    },
+    {
+      "name": "visible_other_date_and_exclusions",
+      "date": "2026-08-02",
+      "expected": {
+        "paid": {
+          "800": {"amount": "50.00", "invoice_total": "70.00", "type": "PAID", "method": "Credit Card", "balance": "0.00", "partial": false}
+        },
+        "new_today": [],
+        "in_progress": ["13"],
+        "ready": [],
+        "picked_up": []
+      }
+    },
+    {
+      "name": "protected_mixed_contact_single_invoice_fallback",
+      "date": "2026-11-04",
+      "expected": {
+        "paid": {
+          "77711": {"amount": "100.00", "invoice_total": "60.00", "type": "PAID", "method": "Credit Card", "balance": "0.00", "partial": false}
+        },
+        "new_today": [],
+        "in_progress": ["13"],
+        "ready": [],
+        "picked_up": []
+      }
+    }
+  ]
+}

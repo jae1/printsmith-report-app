@@ -1,7 +1,9 @@
 import unittest
+import os
 from datetime import date
 from app.services.report_service import get_report_data
 
+@unittest.skipUnless(os.environ.get("PRINTSMITH_LIVE_TESTS") == "1", "Set PRINTSMITH_LIVE_TESTS=1 for read-only PrintSmith integration tests")
 class TestBatchPaymentFix(unittest.TestCase):
     def test_consolidated_ar_payment_attribution(self):
         # Target date where we know a batch payment occurred

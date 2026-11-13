@@ -1,5 +1,10 @@
 # Implementation Plan: Windows Server Watchdog
 
+The 2026-11-12 release-gate implementation is planned and verified in
+`specs/007-regression-release-gates/`. It replaces in-place update preparation
+with isolated candidate releases and adds health/version rollback while
+preserving registered task ownership and crash recovery.
+
 **Branch**: `003-windows-server-watchdog` | **Date**: 2026-07-15
 **Spec**: `specs/003-windows-server-watchdog/spec.md`
 

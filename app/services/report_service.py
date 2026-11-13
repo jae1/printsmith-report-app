@@ -79,9 +79,10 @@ def get_report_data(target_date=None):
             OR pl.name IN ('Ready for Pickup', 'Ready for Delivery', 'Complete')
         )
         AND DATE(ib.ordereddate) >= %s
+        AND DATE(ib.ordereddate) <= %s
         AND ib.isdeleted = false AND ib.voided = false
         ORDER BY ib.wanteddate ASC
-    """, (pickup_limit_date,))
+    """, (pickup_limit_date, target_date))
     ready = cur.fetchall()
 
     # 4. Picked Up / Delivered Today (Completed Today)
@@ -145,6 +146,7 @@ def get_report_data(target_date=None):
             ORDER BY ABS(id - ah.id) LIMIT 1
         ) tdr ON true
         LEFT JOIN invoicebase ib ON ah.invoicenumber = ib.invoicenumber AND ib.isdeleted = false AND ib.voided = false
+            AND EXISTS (SELECT 1 FROM invoice i WHERE i.id = ib.id)
         LEFT JOIN contact c ON ib.contact_id = c.id
         LEFT JOIN party p_con ON c.id = p_con.id
         LEFT JOIN account a ON ib.account_id = a.id
@@ -410,23 +412,25 @@ def get_report_data(target_date=None):
                         LEFT JOIN account a ON ib.account_id = a.id
                         LEFT JOIN contact c ON ib.contact_id = c.id
                         LEFT JOIN party p ON c.id = p.id
-                        WHERE ib.invoicenumber = %s AND ib.isdeleted = false
+                        WHERE ib.invoicenumber = %s AND ib.isdeleted = false AND ib.voided = false
                         LIMIT 1
                     """, (inv,))
                     det = cur_detail.fetchone()
+                    if not det:
+                        continue
                     
-                    job_name = det["name"] if det else (r.get("job_name") or "Linked AR Invoice")
-                    acc_disp = (det["account_name"] or det["contact_name"]) if det else (r.get("account_name") or r.get("contact_name") or "-")
-                    con_disp = (det["contact_name"] if det["account_name"] else "") if det else (r.get("contact_name") if r.get("account_name") else "")
+                    job_name = det["name"]
+                    acc_disp = det["account_name"] or det["contact_name"]
+                    con_disp = det["contact_name"] if det["account_name"] else ""
                     
                     aggregated[inv] = {
                         "invoicenumber": inv,
                         "job_name": job_name,
-                        "ordereddate": det["ordereddate"] if det else r.get("ordereddate"),
-                        "wanteddate": det["wanteddate"] if det else r.get("wanteddate"),
-                        "offpendingdate": det["offpendingdate"] if det else r.get("offpendingdate"),
+                        "ordereddate": det["ordereddate"],
+                        "wanteddate": det["wanteddate"],
+                        "offpendingdate": det["offpendingdate"],
                         "grandtotal": 0,
-                        "invoice_total": float(det["grandtotal"] or 0) if det else 0,
+                        "invoice_total": float(det["grandtotal"] or 0),
                         "account_display": acc_disp.strip(),
                         "contact_display": con_disp.strip(),
                         "is_deposit": 0,

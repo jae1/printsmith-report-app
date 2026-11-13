@@ -6,6 +6,11 @@
 **Input**: The Windows deployment must start automatically after reboot and
 recover when either the report server or its update runner stops unexpectedly.
 
+**2026-11-12 follow-up**: `specs/007-regression-release-gates/` adds isolated
+candidate preparation, mandatory regression/baseline checks, launched revision
+verification, and rollback. The original availability and task ownership rules
+remain protected; working code and dependencies are preserved during checks.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Automatic Startup and Recovery (Priority: P1)

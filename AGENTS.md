@@ -62,8 +62,16 @@ Use `python agent_selector.py --recommend <path>` when ownership is unclear.
 
 Before committing behavior changes, run the smallest relevant verification:
 
-- Report logic: `python -m pytest tests/test_batch_payment.py`
-- Broader changes: `python -m pytest`
+- Offline checks (also run by CI): `python -m unittest discover -s tests -v`
+- Report logic live checks: `PRINTSMITH_LIVE_TESTS=1 python -m pytest tests/test_batch_payment.py`
+  (PowerShell: `$env:PRINTSMITH_LIVE_TESTS = "1"` before the command.)
+- Broader changes: run offline checks and the explicitly enabled live checks.
+- Release gate: `python release_check.py --baseline .release-baseline.json`.
+  Missing database access, skipped live regressions, or unexplained baseline
+  changes must block a release. Never refresh a baseline just to make it pass;
+  review the difference against the active spec and protected rules first.
+- Each bug fix needs a regression that fails before the fix and stays in the
+  suite. Add the surrounding accounting scenario, not only one invoice number.
 - Manual database probes: keep scripts out of production paths and document the
   exact query intent in the relevant spec or plan.
 

@@ -5,6 +5,7 @@ param(
     [ValidateRange(2, 300)]
     [int]$HealthCheckIntervalSeconds = 10,
 
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._/-]*$')]
     [string]$Branch = "main",
 
     [ValidateRange(1, 65535)]
@@ -13,15 +14,31 @@ param(
     [string]$TaskName = "PrintSmith Report Server Watchdog",
 
     [switch]$ScheduledTaskMode,
-    [switch]$ReinstallScheduledTask
+    [switch]$ReinstallScheduledTask,
+    [switch]$Rollback,
+
+    # Internal worker arguments; preparation never runs in the health-check loop.
+    [switch]$PrepareReleaseMode,
+    [string]$ExpectedRunningRevision = "",
+    [string]$BlockedRevision = "",
+    [string]$PreparationResultFile
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $LogFile = Join-Path $RepoRoot "server_auto_update.log"
 $UpdateRequestFile = Join-Path $RepoRoot ".server_update_requested"
+$RollbackRequestFile = Join-Path $RepoRoot ".server_rollback_requested"
+$ReleaseStateFile = Join-Path $RepoRoot ".server-release.json"
+$BaselineFile = Join-Path $RepoRoot ".release-baseline.json"
+$ReleasesRoot = Join-Path $RepoRoot ".releases"
 $ServerProcess = $null
-$RunningRevision = $null
+$ActiveRelease = $null
+$PreviousRelease = $null
+$PreparationProcess = $null
+$PreparationStartedAt = $null
+$PreparationOutput = $null
+$NextUpdateCheck = Get-Date
 
 function Write-Log {
     param([string]$Message)
@@ -124,7 +141,9 @@ function Invoke-RepoCommand {
         if ($Command.Length -gt 1) {
             $Arguments = $Command[1..($Command.Length - 1)]
         }
-        & $Executable @Arguments
+        Get-Command $Executable -ErrorAction Stop | Out-Null
+        $ErrorActionPreference = "Continue"
+        & $Executable @Arguments | Out-Host
         if ($LASTEXITCODE -ne 0) {
             throw "Command failed: $($Command -join ' ')"
         }
@@ -132,29 +151,6 @@ function Invoke-RepoCommand {
     finally {
         Pop-Location
     }
-}
-
-function Ensure-Venv {
-    $PythonExe = Join-Path $RepoRoot "venv\Scripts\python.exe"
-    if (-not (Test-Path $PythonExe)) {
-        Write-Log "Creating virtual environment"
-        Invoke-RepoCommand @("python", "-m", "venv", "venv")
-    }
-    return $PythonExe
-}
-
-function Install-Dependencies {
-    $PythonExe = Ensure-Venv
-    Write-Log "Installing dependencies"
-    Invoke-RepoCommand @($PythonExe, "-m", "pip", "install", "-r", "requirements.txt")
-}
-
-function Get-RepositoryRevision {
-    $Revision = (& git -C $RepoRoot rev-parse HEAD)
-    if ($LASTEXITCODE -ne 0) {
-        throw "Unable to read the local Git revision"
-    }
-    return $Revision.Trim()
 }
 
 function Get-ListeningProcess {
@@ -171,29 +167,82 @@ function Get-ListeningProcess {
     return $Process
 }
 
+function Test-ProcessIdentity {
+    param($Process, $Release)
+    $Details = Get-CimInstance Win32_Process -Filter "ProcessId = $($Process.Id)"
+    if (-not $Details -or $Details.ExecutablePath -ine $Release.python_exe) {
+        return $false
+    }
+    if ($Details.CommandLine -notmatch '(?i)(?:^|[\s"])uvicorn(?:$|[\s"])' -or
+        $Details.CommandLine -notmatch '(?i)(?:^|[\s"])main:app(?:$|[\s"])') {
+        return $false
+    }
+    if ($Release.release_path -ine $RepoRoot -or $Details.CommandLine -match '(?:^|\s)--app-dir(?:\s|=)') {
+        $AppDirPattern = '(?i)(?:^|\s)--app-dir(?:\s+|=)"?{0}"?(?:$|\s)' -f [regex]::Escape($Release.release_path)
+        if ($Details.CommandLine -notmatch $AppDirPattern) { return $false }
+    }
+    return $true
+}
+
+function Test-ReleaseHealth {
+    param($Release)
+    try {
+        $Health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -TimeoutSec 2
+        return $Health.status -eq "ok" -and $Health.revision -eq $Release.revision
+    }
+    catch {
+        return $false
+    }
+}
+
+function Wait-ReleaseHealth {
+    param($Release)
+    $Deadline = (Get-Date).AddSeconds(30)
+    do {
+        if (-not (Test-ServerRunning)) {
+            throw "Release $($Release.revision) exited during startup"
+        }
+        if ($Release.revision -eq "legacy-unverified" -or (Test-ReleaseHealth $Release)) {
+            return
+        }
+        Start-Sleep -Seconds 1
+    } while ((Get-Date) -lt $Deadline)
+    throw "Release $($Release.revision) did not report its expected healthy revision"
+}
+
 function Start-ReportServer {
+    param($Release)
     $ExistingProcess = Get-ListeningProcess
     if ($ExistingProcess) {
+        if (-not (Test-ProcessIdentity $ExistingProcess $Release)) {
+            throw "Port $Port belongs to another process; refusing to adopt or stop it"
+        }
         $script:ServerProcess = $ExistingProcess
-        Write-Log "Adopted existing process $($ExistingProcess.Id) listening on port $Port"
+        if ($Release.revision -ne "legacy-unverified" -and -not (Test-ReleaseHealth $Release)) {
+            throw "The listener on port $Port does not identify as release $($Release.revision)"
+        }
+        Write-Log "Adopted verified app process $($ExistingProcess.Id), revision $($Release.revision)"
         return
     }
 
-    $PythonExe = Ensure-Venv
-    Write-Log "Starting server on 0.0.0.0:$Port"
-    $script:ServerProcess = Start-Process `
-        -FilePath $PythonExe `
-        -ArgumentList @("-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "$Port") `
-        -WorkingDirectory $RepoRoot `
-        -PassThru `
-        -NoNewWindow
-
-    Start-Sleep -Seconds 2
-    $script:ServerProcess.Refresh()
-    if ($script:ServerProcess.HasExited) {
-        throw "Server exited immediately with code $($script:ServerProcess.ExitCode)"
+    if (-not (Test-Path $Release.python_exe) -or -not (Test-Path $Release.release_path)) {
+        throw "Release files are missing for $($Release.revision)"
     }
-    Write-Log "Server process started with ID $($script:ServerProcess.Id)"
+    $OldRevision = $env:PRINTSMITH_RELEASE_REVISION
+    try {
+        $env:PRINTSMITH_RELEASE_REVISION = $Release.revision
+        $Arguments = '-m uvicorn --app-dir "{0}" main:app --host 0.0.0.0 --port {1}' -f $Release.release_path, $Port
+        Write-Log "Starting release $($Release.revision) on 0.0.0.0:$Port"
+        $script:ServerProcess = Start-Process `
+            -FilePath $Release.python_exe `
+            -ArgumentList $Arguments `
+            -WorkingDirectory $RepoRoot `
+            -PassThru `
+            -NoNewWindow
+    }
+    finally {
+        $env:PRINTSMITH_RELEASE_REVISION = $OldRevision
+    }
 }
 
 function Stop-ReportServer {
@@ -217,77 +266,258 @@ function Test-ServerRunning {
     return -not $script:ServerProcess.HasExited
 }
 
-function Update-RepositoryIfAvailable {
-    Write-Log "Checking origin/$Branch for updates"
-    Invoke-RepoCommand @("git", "fetch", "origin", $Branch)
-
-    $RemoteHead = (& git -C $RepoRoot rev-parse "origin/$Branch").Trim()
-    if ($LASTEXITCODE -ne 0) {
-        throw "Unable to read origin/$Branch"
+function Save-ReleaseState {
+    param($Release, $Previous, [string]$State = "active")
+    $PreviousData = $null
+    if ($Previous) {
+        $PreviousData = @{
+            revision = $Previous.revision
+            release_path = $Previous.release_path
+            python_exe = $Previous.python_exe
+        }
     }
-
-    if ($RemoteHead -eq $script:RunningRevision) {
-        Write-Log "No update found"
-        return
+    $Data = @{
+        revision = $Release.revision
+        release_path = $Release.release_path
+        python_exe = $Release.python_exe
+        previous = $PreviousData
+        state = $State
+        blocked_revision = $script:BlockedRevision
     }
-
-    Write-Log "Preparing update: $($script:RunningRevision) -> $RemoteHead"
-
-    # Keep the working server alive while Git and dependency preparation run.
-    Invoke-RepoCommand @("git", "reset", "--hard", "origin/$Branch")
-    Install-Dependencies
-
-    # Only stop the working server after every preparation step succeeds.
-    Stop-ReportServer
-    Start-ReportServer
-    $script:RunningRevision = $RemoteHead
-    Write-Log "Update completed successfully at $RemoteHead"
+    $TemporaryFile = "$ReleaseStateFile.tmp"
+    $Data | ConvertTo-Json -Depth 5 | Set-Content -Path $TemporaryFile -Encoding UTF8
+    if (Test-Path $ReleaseStateFile) {
+        [IO.File]::Replace($TemporaryFile, $ReleaseStateFile, [NullString]::Value)
+    }
+    else {
+        [IO.File]::Move($TemporaryFile, $ReleaseStateFile)
+    }
 }
 
-if (Install-OrStartScheduledTask) {
+function Invoke-ReleaseSwitch {
+    param($Candidate, [switch]$ManualRollback)
+    $OldRelease = $script:ActiveRelease
+    $OldPrevious = $script:PreviousRelease
+    $script:BlockedRevision = ""
+    if ($ManualRollback -and $OldRelease) {
+        $script:BlockedRevision = $OldRelease.revision
+    }
+    # A pending record lets a restarted watchdog validate or roll back an interrupted switch.
+    Save-ReleaseState $Candidate $OldRelease "pending"
+    try {
+        Stop-ReportServer
+        Start-ReportServer $Candidate
+        Wait-ReleaseHealth $Candidate
+        $script:ActiveRelease = $Candidate
+        $script:PreviousRelease = $OldRelease
+        Save-ReleaseState $Candidate $OldRelease
+        Write-Log "Release $($Candidate.revision) is healthy and active"
+    }
+    catch {
+        $Failure = $_.Exception.Message
+        Stop-ReportServer
+        $script:BlockedRevision = $Candidate.revision
+        $script:ActiveRelease = $OldRelease
+        $script:PreviousRelease = $OldPrevious
+        if ($OldRelease) {
+            Start-ReportServer $OldRelease
+            Wait-ReleaseHealth $OldRelease
+            $State = "active"
+            if ($OldRelease.revision -eq "legacy-unverified") { $State = "legacy" }
+            Save-ReleaseState $OldRelease $OldPrevious $State
+            Write-Log "Rolled back to $($OldRelease.revision); rejected $($Candidate.revision): $Failure"
+        }
+        else {
+            Remove-Item $ReleaseStateFile -Force -ErrorAction SilentlyContinue
+        }
+        throw "Release validation failed: $Failure"
+    }
+}
+
+function Prepare-Release {
+    Write-Host "Checking origin/$Branch for a candidate release"
+    Invoke-RepoCommand @("git", "fetch", "origin", $Branch)
+    $RemoteHead = (& git -C $RepoRoot rev-parse "origin/$Branch").Trim()
+    if ($LASTEXITCODE -ne 0 -or $RemoteHead -notmatch '^[0-9a-f]{40}$') {
+        throw "Unable to read origin/$Branch"
+    }
+    if ($RemoteHead -eq $ExpectedRunningRevision -or $RemoteHead -eq $BlockedRevision) {
+        return $null
+    }
+    if (-not (Test-Path $BaselineFile)) {
+        throw "Approved baseline missing: $BaselineFile. Review and capture it before releasing; the working server stays online."
+    }
+
+    $BuildId = "$RemoteHead-$([guid]::NewGuid().ToString('N'))"
+    $ReleasePath = Join-Path $ReleasesRoot $BuildId
+    $Archive = Join-Path $ReleasesRoot "$BuildId.zip"
+    Invoke-RepoCommand @("git", "archive", "--format=zip", "--output", $Archive, $RemoteHead)
+    Expand-Archive -Path $Archive -DestinationPath $ReleasePath -Force
+    Remove-Item $Archive -Force
+    $PythonExe = Join-Path $ReleasePath "venv\Scripts\python.exe"
+    if (-not (Test-Path $PythonExe)) {
+        Invoke-RepoCommand @("python", "-m", "venv", (Join-Path $ReleasePath "venv"))
+    }
+    Invoke-RepoCommand @($PythonExe, "-m", "pip", "install", "-r", (Join-Path $ReleasePath "requirements.txt"))
+    # The checker runs candidate code while runtime JSON stays in the original working directory.
+    Invoke-RepoCommand @($PythonExe, (Join-Path $ReleasePath "release_check.py"), "--baseline", $BaselineFile)
+    return [pscustomobject]@{ revision = $RemoteHead; release_path = $ReleasePath; python_exe = $PythonExe }
+}
+
+function Start-ReleasePreparation {
+    New-Item -ItemType Directory -Path $ReleasesRoot -Force | Out-Null
+    $RequestId = [guid]::NewGuid().ToString("N")
+    $script:PreparationOutput = Join-Path $ReleasesRoot "prepared-$RequestId.json"
+    $LogPrefix = Join-Path $ReleasesRoot "prepare-$RequestId"
+    $Revision = ""
+    if ($script:ActiveRelease) { $Revision = $script:ActiveRelease.revision }
+    $Arguments = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}" -PrepareReleaseMode -Branch "{1}" -PreparationResultFile "{2}"' -f `
+        $PSCommandPath, $Branch, $script:PreparationOutput
+    if ($Revision) { $Arguments += ' -ExpectedRunningRevision "{0}"' -f $Revision }
+    if ($script:BlockedRevision) { $Arguments += ' -BlockedRevision "{0}"' -f $script:BlockedRevision }
+    $script:PreparationProcess = Start-Process `
+        -FilePath (Join-Path $PSHOME "powershell.exe") `
+        -ArgumentList $Arguments `
+        -WorkingDirectory $RepoRoot `
+        -RedirectStandardOutput "$LogPrefix.stdout.log" `
+        -RedirectStandardError "$LogPrefix.stderr.log" `
+        -PassThru -WindowStyle Hidden
+    $script:PreparationStartedAt = Get-Date
+    Write-Log "Preparing release separately; health checks continue. Details: $LogPrefix.*.log"
+}
+
+function Stop-ReleasePreparation {
+    if ($script:PreparationProcess) {
+        $script:PreparationProcess.Refresh()
+        if (-not $script:PreparationProcess.HasExited) {
+            & taskkill.exe /PID $script:PreparationProcess.Id /T /F | Out-Host
+            if ($LASTEXITCODE -ne 0) { throw "Could not stop the release preparation process tree" }
+        }
+        $script:PreparationProcess.Dispose()
+        $script:PreparationProcess = $null
+    }
+}
+
+function Complete-ReleasePreparation {
+    if (-not $script:PreparationProcess) { return }
+    $script:PreparationProcess.Refresh()
+    if (-not $script:PreparationProcess.HasExited) {
+        if ((Get-Date) -gt $script:PreparationStartedAt.AddMinutes(30)) {
+            Stop-ReleasePreparation
+            throw "Release preparation exceeded 30 minutes; keeping the current server online"
+        }
+        return
+    }
+    $ExitCode = $script:PreparationProcess.ExitCode
+    $script:PreparationProcess.Dispose()
+    $script:PreparationProcess = $null
+    $script:NextUpdateCheck = (Get-Date).AddSeconds($CheckIntervalSeconds)
+    if ($ExitCode -ne 0 -or -not (Test-Path $script:PreparationOutput)) {
+        throw "Release preparation or regression checks failed; keeping the current server online. See .releases preparation logs."
+    }
+    $Candidate = Get-Content $script:PreparationOutput -Raw | ConvertFrom-Json
+    Remove-Item $script:PreparationOutput -Force
+    if ($Candidate) { Invoke-ReleaseSwitch $Candidate }
+}
+
+function Invoke-WatchdogTick {
+    if ($script:ActiveRelease -and -not (Test-ServerRunning)) {
+        Write-Log "Server is not running; restarting release $($script:ActiveRelease.revision) immediately"
+        Start-ReportServer $script:ActiveRelease
+        Wait-ReleaseHealth $script:ActiveRelease
+    }
+    if (Test-Path $RollbackRequestFile) {
+        Remove-Item $RollbackRequestFile -Force
+        Stop-ReleasePreparation
+        if ($script:PreviousRelease) {
+            Invoke-ReleaseSwitch $script:PreviousRelease -ManualRollback
+        }
+        else { Write-Log "Rollback requested, but no previous healthy release is recorded" }
+        $script:NextUpdateCheck = (Get-Date).AddSeconds($CheckIntervalSeconds)
+    }
+    if (Test-Path $UpdateRequestFile) {
+        Remove-Item $UpdateRequestFile -Force
+        $script:BlockedRevision = ""
+        $script:NextUpdateCheck = Get-Date
+    }
+    Complete-ReleasePreparation
+    if (-not $script:PreparationProcess -and (Get-Date) -ge $script:NextUpdateCheck) {
+        Start-ReleasePreparation
+    }
+}
+
+function Restore-ServingRelease {
+    if (-not (Test-Path $ReleaseStateFile)) {
+        if (Get-ListeningProcess) {
+            $Legacy = [pscustomobject]@{
+                revision = "legacy-unverified"
+                release_path = $RepoRoot
+                python_exe = Join-Path $RepoRoot "venv\Scripts\python.exe"
+            }
+            Start-ReportServer $Legacy
+            $script:ActiveRelease = $Legacy
+            Save-ReleaseState $Legacy $null "legacy"
+        }
+        return
+    }
+    $Saved = Get-Content $ReleaseStateFile -Raw | ConvertFrom-Json
+    $script:ActiveRelease = $Saved
+    $script:PreviousRelease = $Saved.previous
+    $script:BlockedRevision = $Saved.blocked_revision
+    try {
+        Start-ReportServer $Saved
+        Wait-ReleaseHealth $Saved
+        if ($Saved.state -eq "pending") { Save-ReleaseState $Saved $Saved.previous }
+    }
+    catch {
+        if (-not $Saved.previous) { throw }
+        Stop-ReportServer
+        $script:BlockedRevision = $Saved.revision
+        $script:ActiveRelease = $Saved.previous
+        $script:PreviousRelease = $null
+        Start-ReportServer $script:ActiveRelease
+        Wait-ReleaseHealth $script:ActiveRelease
+        $State = "active"
+        if ($script:ActiveRelease.revision -eq "legacy-unverified") { $State = "legacy" }
+        Save-ReleaseState $script:ActiveRelease $null $State
+        Write-Log "Recovered previous healthy release $($script:ActiveRelease.revision)"
+    }
+}
+
+if ($PrepareReleaseMode) {
+    try {
+        $Candidate = Prepare-Release
+        ConvertTo-Json -InputObject $Candidate | Set-Content -Path $PreparationResultFile -Encoding UTF8
+        exit 0
+    }
+    catch {
+        Write-Error $_ -ErrorAction Continue
+        exit 1
+    }
+}
+
+if ($Rollback) {
+    $Task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    if (-not $Task) { throw "Install the scheduled watchdog before requesting a rollback" }
+    Set-Content -Path $RollbackRequestFile -Value (Get-Date -Format "o")
+    if ($Task.State -ne "Running") { Start-ScheduledTask -TaskName $TaskName }
+    Write-Host "Rollback requested; the watchdog will restore the previous healthy release."
     exit 0
 }
 
+if (Install-OrStartScheduledTask) { exit 0 }
+
 try {
     Write-Log "Scheduled watchdog started from $RepoRoot"
-
-    Ensure-Venv | Out-Null
-    $script:RunningRevision = Get-RepositoryRevision
-    try {
-        Start-ReportServer
-    }
-    catch {
-        Write-Log "Initial server start failed; repairing dependencies: $($_.Exception.Message)"
-        Install-Dependencies
-        Start-ReportServer
-    }
-
-    $NextUpdateCheck = Get-Date
-
+    Restore-ServingRelease
     while ($true) {
-        if (-not (Test-ServerRunning)) {
-            Write-Log "Server is not running; restarting immediately"
-            Start-ReportServer
-            $script:RunningRevision = Get-RepositoryRevision
+        try {
+            Invoke-WatchdogTick
         }
-
-        if (Test-Path $UpdateRequestFile) {
-            Remove-Item $UpdateRequestFile -Force -ErrorAction SilentlyContinue
-            Write-Log "Immediate update check requested"
-            $NextUpdateCheck = Get-Date
+        catch {
+            Write-Log "Watchdog action failed: $($_.Exception.Message)"
+            $script:NextUpdateCheck = (Get-Date).AddMinutes(2)
         }
-
-        if ((Get-Date) -ge $NextUpdateCheck) {
-            try {
-                Update-RepositoryIfAvailable
-                $NextUpdateCheck = (Get-Date).AddSeconds($CheckIntervalSeconds)
-            }
-            catch {
-                Write-Log "Update failed; keeping the current server online: $($_.Exception.Message)"
-                $NextUpdateCheck = (Get-Date).AddMinutes(2)
-            }
-        }
-
         Start-Sleep -Seconds $HealthCheckIntervalSeconds
     }
 }
@@ -296,7 +526,7 @@ catch {
     throw
 }
 finally {
-    # Do not stop a healthy child here. If the watchdog itself is restarted,
-    # the new instance adopts the existing listener and resumes monitoring it.
+    Stop-ReleasePreparation
+    # A restarted watchdog validates and adopts the healthy serving release.
     Write-Log "Watchdog process stopped; Task Scheduler will restart it"
 }
